@@ -24,7 +24,7 @@ def draw_split(x, y, which):
     return fig, axs
 
 
-def draw_model(x, y, labels=None, split=2):
+def draw_model(x, y, labels=None, split=2, collapse=False):
     l = len(y)
     if l > 5:
         split = False
@@ -38,6 +38,8 @@ def draw_model(x, y, labels=None, split=2):
     for i in range(l):
         ax = axs[i]
         z = y[i]
+        if collapse:
+            z=z.sum(axis=0)
         lines = ax.plot(x, z.T, lw=1.3)
         try:
             ax.set_title(labels[i])

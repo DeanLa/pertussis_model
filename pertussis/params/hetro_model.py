@@ -1,10 +1,11 @@
 import numpy as np
 from numpy import cos, pi
 
-contacts = np.genfromtxt('./data/mossong.csv', delimiter=',')
+# contacts = np.genfromtxt('./data/mossong.csv', delimiter=',')
 AGE = 15
+contacts = np.ones([AGE, AGE]) * 1 / AGE
 ETH = 3
-
+unpack_values = [AGE] * 6
 
 def collect_state0():
     normalizer = np.ones(AGE) / AGE
@@ -24,7 +25,7 @@ def collect_params(t, step, **kwargs):
     T = t - 1948
 
     # print (C.mean())
-    C = contacts.mean() * 1000
+    C = contacts#.mean() * 1000
 
     # Aging
     a = np.array((1 / 6, 1 / 6, 1 / 6, 1 / 2, 6,
@@ -44,10 +45,10 @@ def collect_params(t, step, **kwargs):
     mu = delta  # Death [] yearly
 
     # Vaccinations
-    phi_ap = np.array([2, 2, 2, 6, 72, 72])  # month [4]
-    phi_wp = np.array([2, 2, 2, 6])  # month [4]
-    phi_ap = (12 / step) * (1 / phi_ap)
-    phi_wp = (12 / step) * (1 / phi_wp)
+    # phi_ap = np.array([2, 2, 2, 6, 72, 72])  # month [4]
+    # phi_wp = np.array([2, 2, 2, 6])  # month [4]
+    # phi_ap = (12 / step) * (1 / phi_ap)
+    # phi_wp = (12 / step) * (1 / phi_wp)
     omega_ap = (1 / 3) * (1 / step)  # Waning
     omega_wp = (1 / 30) * (1 / step)  # Waning
 
@@ -58,13 +59,14 @@ def collect_params(t, step, **kwargs):
 
     # Efficacies
     epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
-    epsilon_ap = np.concatenate((epsilon_ap, epsilon_ap[-1] * np.ones(AGE - 6)))
     epsilon_wp = np.ones(4) * 0.9
+    # Multiply the last value to create length of AGE
+    epsilon_ap = np.concatenate((epsilon_ap, epsilon_ap[-1] * np.ones(AGE - 6)))
     epsilon_wp = np.concatenate([epsilon_wp, epsilon_wp[-1] * np.ones(AGE - 4)])
 
     return delta, lambda_s, lambda_a, gamma_a, \
            gamma_s, omega, mu, alpha_ap, \
-           alpha_wp, c, phi_ap, phi_wp, \
+           alpha_wp, c, \
            epsilon_ap, epsilon_wp, omega_ap, omega_wp, \
            a
 

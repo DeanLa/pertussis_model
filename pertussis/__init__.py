@@ -2,6 +2,7 @@ import numpy as np
 from numpy import cos, pi
 from itertools import chain
 from .params import *
+# from .model import *
 
 
 def beta(t, m, omega, phi):
