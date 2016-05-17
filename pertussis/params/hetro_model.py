@@ -1,17 +1,52 @@
 import numpy as np
 from numpy import cos, pi
 
-# contacts = np.genfromtxt('./data/mossong/italy_phy.csv', delimiter=',')
-AGE = 15
-contacts = np.ones([AGE, AGE]) * 1 / AGE
-ETH = 3
-unpack_values = [AGE] * 6
-_O = np.ones(AGE)
-_Z = np.zeros(AGE)
+J = 15  # Age Groups
+E = 3  # Ethnicity Groups
+_O = np.ones(J)
+_Z = np.zeros(J)
+C = np.ones([J, J]) * 1 / J  # Contact Matrix
+# C = np.genfromtxt('./data/mossong/italy_phy.csv', delimiter=',') #Contact Matrix
+unpack_values = [J] * 6
+N = 1 / 365
+# Demographics
+# ============
+# Birth
+delta = np.ones(100) * N/1975
+mu = delta
+# delta = (1 / 75) * N  # Births Yearly
+# mu = delta  # * _O  # Death [] yearly
+# Aging
+a = N / np.array((1 / 6, 1 / 6, 1 / 6, 1 / 2, 6,
+                  6, 7, 5, 5, 5,
+                  5, 5, 10, 10))
+# Constant Params
+# ===============
+f = 1e-3 * _O  # Force of infection
+
+# Efficacies and Waning
+# =====================
+epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
+epsilon_wp = np.ones(4) * 0.9
+# Multiply the last value to create length of AGE
+epsilon_ap = np.concatenate((epsilon_ap, epsilon_ap[-1] * np.ones(J - 6)))
+epsilon_wp = np.concatenate([epsilon_wp, epsilon_wp[-1] * np.ones(J - 4)])
+
+omega = (1 / 30) * N  # Loss of immunity [1] 3e-5 est yearly [3] 1/30 yearly
+omega_ap = (1 / 3) * N  # Waning
+omega_wp = (1 / 30) * N  # Waning
+
+gamma_s = (1 / 24)  # Healing rate Symptomatic [1] 1/6 [3] 1/25
+gamma_a = (1 / 8)  # Healing rate Asymptomatic [1] 16 days [3] 8
+
+# Probabilites
+alpha_ap = 0.2  # Chance to be symptomatic from aP
+alpha_wp = 1  # Chance to be symptomatic from wP
+
 
 def collect_state0():
-    normalizer = np.ones(AGE) / AGE
-    _pop = np.ones(1) / AGE
+    normalizer = np.ones(J) / J
+    _pop = _O / J
     # Compartments (State 0)
     S = 0.2 * normalizer
     Vap = 0 * normalizer
@@ -24,43 +59,16 @@ def collect_state0():
 
 
 def collect_params(t, step, **kwargs):
-    T = t - 1948
-    N = 1 / step
+    # T = t - 1948
+    # N = 1 / step
 
-    # Aging
-    a = np.array((1 / 6, 1 / 6, 1 / 6, 1 / 2, 6,
-                  6, 7, 5, 5, 5,
-                  5, 5, 10, 10))
-    a = (1 / a) * N
+    # a = (1 / a) * N
     # rates
-    delta = (1 / 75) * (1.0 ** T) * N  # Births Yearly
-    f = 1e-3 * _O  # Force of infection - S stay at home [2]
-    gamma_s = (1 / 24)  # Healing rate Symptomatic [1] 1/6 [3] 1/25
-    gamma_a = (1 / 8)  # Healing rate Asymptomatic [1] 16 days [3] 8
-    omega = (1 / 30) * N  # Loss of immunity [1] 3e-5 est yearly [3] 1/30 yearly
-    mu = delta #* _O  # Death [] yearly
+    # delta = (1 / 75) * (1.0 ** T) * N  # Births Yearly
+    #
+    # mu = delta  # * _O  # Death [] yearly
 
-    # Vaccinations
-    omega_ap = (1 / 3) * N  # Waning
-    omega_wp = (1 / 30) * N  # Waning
-
-    # Probabilites
-    alpha_ap = 0.2  # Chance to be symptomatic from aP
-    alpha_wp = 0.0  # Chance to be symptomatic from wP
-    c = 0.95  # coverage
-
-    # Efficacies
-    epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
-    epsilon_wp = np.ones(4) * 0.9
-    # Multiply the last value to create length of AGE
-    epsilon_ap = np.concatenate((epsilon_ap, epsilon_ap[-1] * np.ones(AGE - 6)))
-    epsilon_wp = np.concatenate([epsilon_wp, epsilon_wp[-1] * np.ones(AGE - 4)])
-
-    return delta, mu, a, \
-           gamma_a, gamma_s, \
-           omega, omega_ap, omega_wp, \
-           alpha_ap, alpha_wp, \
-           epsilon_ap, epsilon_wp, f
+    return None
 
 
 '''Supplement:

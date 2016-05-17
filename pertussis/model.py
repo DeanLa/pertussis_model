@@ -1,11 +1,10 @@
 import numpy as np
 from pertussis import *
 import pymc as pm
-from .params.hetro_model import collect_params
+# from .params.hetro_model import collect_params
 
 # _J = AGE
 # _K = ETH
-C = contacts
 M = 1e-6
 
 
@@ -15,19 +14,11 @@ def hetro_model(INP, t, step, m1, omega_, phi):
 
     ## Compartments and Derivatives
     S, Vap, Vwp, Is, Ia, R = unpack(INP, *unpack_values)
-    dS, dVap, dVwp, dIs, dIa, dR = (np.zeros(uv) for uv in unpack_values) # Zeros by size
-
-    ## Params
-    delta, mu, a,\
-    gamma_a, gamma_s, \
-    omega, omega_ap, omega_wp, \
-    alpha_ap, alpha_wp, \
-    epsilon_ap, epsilon_wp, f = \
-        collect_params(T, step)
+    dS, dVap, dVwp, dIs, dIa, dR = (np.zeros(uv) for uv in unpack_values)  # Zeros by size
 
     ## Helpers and Pre-Calculations
     I = Ia + Is  # Helper
-    beta_ = beta(T - 1948, m1, omega_, phi) * f
+    beta_ = beta(T, m1, omega_, phi) * f
     IC = I.dot(C)
     lambda_ = beta_ * IC
 
@@ -37,14 +28,14 @@ def hetro_model(INP, t, step, m1, omega_, phi):
     ## Equations
 
     # Susceptible
-    dS[0] = delta  # IN: Birth rate
+    dS[0] = delta[int(T) - 1948]  # IN: Birth rate
     dS += omega * R + omega_ap * Vap + omega_wp * Vwp  # IN: Waning from Natural and vaccine
     dS -= lambda_ * S  # OUT: Becoming infected
 
     # Vaccination
     if 2002 > T >= 1957:  # Begin wp
         dVwp[1:5] += S[:4] * a[:4]  # IN: Age and vaccinate wP from S classes
-        dS[5:] += S[4:-1] * a[4:]#IN: Age from previous age no vaccine
+        dS[5:] += S[4:-1] * a[4:]  # IN: Age from previous age no vaccine
 
     if T >= 2002:  # Begin aP
         dVap[1:7] += S[:6] * a[:6]  # IN: Age and vaccinate aP from S classes
@@ -73,7 +64,7 @@ def hetro_model(INP, t, step, m1, omega_, phi):
     dR -= 2 * M
 
     ## Regular Aging
-    dS[:-1] -= S[:-1] * a # OUT: Age out to Next V or Next S, OUT is the same
+    dS[:-1] -= S[:-1] * a  # OUT: Age out to Next V or Next S, OUT is the same
 
     dVap[1:] += Vap[:-1] * a  # IN
     dVap[:-1] -= Vap[:-1] * a  # OUT
@@ -88,7 +79,7 @@ def hetro_model(INP, t, step, m1, omega_, phi):
     dIa[:-1] -= Ia[:-1] * a  # OUT
     ## Housekeeping
     Y = pack_flat((dS, dVap, dVwp, dIs, dIa, dR))
-    Y -= mu * INP  # OUT: Death
+    Y -= mu[int(T) - 1948] * INP  # OUT: Death
     return Y
 
 
