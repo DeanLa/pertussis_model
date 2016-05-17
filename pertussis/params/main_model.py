@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import cos, pi
 
-contacts = np.genfromtxt('./data/mossong.csv', delimiter=',')
+XXX = 4
 
 
 def collect_params(t, step, **kwargs):

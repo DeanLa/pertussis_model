@@ -1,24 +1,18 @@
 import numpy as np
 from pertussis import *
 import pymc as pm
-# from .params.hetro_model import collect_params
-
-# _J = AGE
-# _K = ETH
-M = 1e-6
 
 
-def hetro_model(INP, t, step, m1, omega_, phi):
-    # from .params.hetro_model import collect_params
-    T = reduce_time(t, step=step)
-
+def hetro_model(INP, t,
+                m1, o, p):
+    T = reduce_time(t, step=1 / N)
     ## Compartments and Derivatives
     S, Vap, Vwp, Is, Ia, R = unpack(INP, *unpack_values)
     dS, dVap, dVwp, dIs, dIa, dR = (np.zeros(uv) for uv in unpack_values)  # Zeros by size
 
     ## Helpers and Pre-Calculations
     I = Ia + Is  # Helper
-    beta_ = beta(T, m1, omega_, phi) * f
+    beta_ = beta(T - 1948, m1, o, p) * f
     IC = I.dot(C)
     lambda_ = beta_ * IC
 

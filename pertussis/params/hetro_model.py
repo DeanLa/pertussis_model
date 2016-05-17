@@ -1,30 +1,34 @@
 import numpy as np
 from numpy import cos, pi
+import pymc as pm
 
 J = 15  # Age Groups
-E = 3  # Ethnicity Groups
+# E = 3  # Ethnicity Groups
+N = 1 / 365
+M = 1e-6
+
 _O = np.ones(J)
 _Z = np.zeros(J)
 C = np.ones([J, J]) * 1 / J  # Contact Matrix
 # C = np.genfromtxt('./data/mossong/italy_phy.csv', delimiter=',') #Contact Matrix
 unpack_values = [J] * 6
-N = 1 / 365
 # Demographics
 # ============
 # Birth
-delta = np.ones(100) * N/1975
+# delta = np.ones(100) * N / 75
+delta = 1.0 ** np.arange(0,100,1) * N / 75
 mu = delta
 # delta = (1 / 75) * N  # Births Yearly
 # mu = delta  # * _O  # Death [] yearly
 # Aging
-a = N / np.array((1 / 6, 1 / 6, 1 / 6, 1 / 2, 6,
+a = N * np.array((1 / 6, 1 / 6, 1 / 6, 1 / 2, 6,
                   6, 7, 5, 5, 5,
                   5, 5, 10, 10))
 # Constant Params
 # ===============
-f = 1e-3 * _O  # Force of infection
+f = 1e1 * _O  # Force of infection
 
-# Efficacies and Waning
+# Efficacy and Waning
 # =====================
 epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
 epsilon_wp = np.ones(4) * 0.9
@@ -39,36 +43,23 @@ omega_wp = (1 / 30) * N  # Waning
 gamma_s = (1 / 24)  # Healing rate Symptomatic [1] 1/6 [3] 1/25
 gamma_a = (1 / 8)  # Healing rate Asymptomatic [1] 16 days [3] 8
 
-# Probabilites
+# Probabilities
 alpha_ap = 0.2  # Chance to be symptomatic from aP
 alpha_wp = 1  # Chance to be symptomatic from wP
 
 
+
 def collect_state0():
-    normalizer = np.ones(J) / J
     _pop = _O / J
     # Compartments (State 0)
-    S = 0.2 * normalizer
-    Vap = 0 * normalizer
-    Vwp = 0 * normalizer
-    Is = 1e-4 * normalizer
-    Ia = 0 * normalizer  # 1e-4
+    S = 0.1 * _pop
+    Vap = 0 * _pop
+    Vwp = 0 * _pop
+    Is = 1e-3 * _pop
+    Ia = 0 * _pop  # 1e-4
     R = _pop - S - Is - Ia
 
     return S, Vap, Vwp, Is, Ia, R
-
-
-def collect_params(t, step, **kwargs):
-    # T = t - 1948
-    # N = 1 / step
-
-    # a = (1 / a) * N
-    # rates
-    # delta = (1 / 75) * (1.0 ** T) * N  # Births Yearly
-    #
-    # mu = delta  # * _O  # Death [] yearly
-
-    return None
 
 
 '''Supplement:

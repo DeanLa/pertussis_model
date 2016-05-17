@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from .mcmc import *
+plt.style.use('ggplot')
 
 def draw_no_split(x, y):
     # l = y.shape[1]
