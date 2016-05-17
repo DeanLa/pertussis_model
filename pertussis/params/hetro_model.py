@@ -1,11 +1,13 @@
 import numpy as np
 from numpy import cos, pi
 
-# contacts = np.genfromtxt('./data/mossong.csv', delimiter=',')
+# contacts = np.genfromtxt('./data/mossong/italy_phy.csv', delimiter=',')
 AGE = 15
 contacts = np.ones([AGE, AGE]) * 1 / AGE
 ETH = 3
 unpack_values = [AGE] * 6
+_O = np.ones(AGE)
+_Z = np.zeros(AGE)
 
 def collect_state0():
     normalizer = np.ones(AGE) / AGE
@@ -23,38 +25,28 @@ def collect_state0():
 
 def collect_params(t, step, **kwargs):
     T = t - 1948
-
-    # print (C.mean())
-    C = contacts#.mean() * 1000
+    N = 1 / step
 
     # Aging
     a = np.array((1 / 6, 1 / 6, 1 / 6, 1 / 2, 6,
                   6, 7, 5, 5, 5,
                   5, 5, 10, 10))
-    a = (1 / a) * (1 / step)
+    a = (1 / a) * N
     # rates
-    delta = (1 / 75) * (1.0 ** T) * (1 / step)  # Births Yearly
-    beta = 6.5e-5  # Force of infection - S stay at home [2]
-    # beta_a = 2 * beta  # Force of infection - A go outside [] daily
-    lambda_s = beta * C
-    lambda_a = lambda_s
-    lambda_ = lambda_s
+    delta = (1 / 75) * (1.0 ** T) * N  # Births Yearly
+    f = 1e-3 * _O  # Force of infection - S stay at home [2]
     gamma_s = (1 / 24)  # Healing rate Symptomatic [1] 1/6 [3] 1/25
     gamma_a = (1 / 8)  # Healing rate Asymptomatic [1] 16 days [3] 8
-    omega = (1 / 30) * (1 / step)  # Loss of immunity [1] 3e-5 est yearly [3] 1/30 yearly
-    mu = delta  # Death [] yearly
+    omega = (1 / 30) * N  # Loss of immunity [1] 3e-5 est yearly [3] 1/30 yearly
+    mu = delta #* _O  # Death [] yearly
 
     # Vaccinations
-    # phi_ap = np.array([2, 2, 2, 6, 72, 72])  # month [4]
-    # phi_wp = np.array([2, 2, 2, 6])  # month [4]
-    # phi_ap = (12 / step) * (1 / phi_ap)
-    # phi_wp = (12 / step) * (1 / phi_wp)
-    omega_ap = (1 / 3) * (1 / step)  # Waning
-    omega_wp = (1 / 30) * (1 / step)  # Waning
+    omega_ap = (1 / 3) * N  # Waning
+    omega_wp = (1 / 30) * N  # Waning
 
     # Probabilites
     alpha_ap = 0.2  # Chance to be symptomatic from aP
-    alpha_wp = 1.0  # Chance to be symptomatic from wP
+    alpha_wp = 0.0  # Chance to be symptomatic from wP
     c = 0.95  # coverage
 
     # Efficacies
@@ -64,11 +56,11 @@ def collect_params(t, step, **kwargs):
     epsilon_ap = np.concatenate((epsilon_ap, epsilon_ap[-1] * np.ones(AGE - 6)))
     epsilon_wp = np.concatenate([epsilon_wp, epsilon_wp[-1] * np.ones(AGE - 4)])
 
-    return delta, lambda_s, lambda_a, gamma_a, \
-           gamma_s, omega, mu, alpha_ap, \
-           alpha_wp, c, \
-           epsilon_ap, epsilon_wp, omega_ap, omega_wp, \
-           a
+    return delta, mu, a, \
+           gamma_a, gamma_s, \
+           omega, omega_ap, omega_wp, \
+           alpha_ap, alpha_wp, \
+           epsilon_ap, epsilon_wp, f
 
 
 '''Supplement:
@@ -76,7 +68,7 @@ def collect_params(t, step, **kwargs):
 [2] Headi Dangelis - Priming with...
 [3] Meagan C F - Cost Effectiveness of Next gen...
 [4] IMoH policy
-
+[5] Mossong Contact Matrix
 
 Age Groups:
 0. 0 - 2m

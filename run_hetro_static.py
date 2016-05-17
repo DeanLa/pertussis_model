@@ -17,7 +17,9 @@ state_0 = collect_state0()
 # pprint(state_0)
 state_0 = pack_flat(state_0)
 sleep(0.01)  # makes prints clearer
-# print ("\n\n\n")
+print ("\n")
+print(state_0.sum())
+
 
 # # Initial Parameters
 t_start = 1948
@@ -39,11 +41,11 @@ print (clock()-clk)
 x = reduce_time(t_range, start=t_start, step=step)
 y = unpack(RES.T, *unpack_values)
 print (type(y))
-h = y[0] + y[1].sum(axis=0) + y[2].sum(axis=0)
+h = y[0] + y[1] + y[2]
 y.append(h)
 # #
-fig2, ax2 = draw_model(x, y[0:3], ["Susceptible", "Vaccinated ap", "Vaccinated wp"], split=False, collapse=True)
-fig1, ax1 = draw_model(x, y[3:7], ["Infected s", "Infected Ia", "Recovered", "Healthy"], split=0)
+fig2, ax2 = draw_model(x, y[0:3], ["Susceptible", "Vaccinated ap", "Vaccinated wp"], split=False, collapse=False)
+fig1, ax1 = draw_model(x, y[3:7], ["Infected s", "Infected Ia", "Recovered", "Healthy"], split=0, collapse=False)
 # ax1[0].scatter(years, data)
 # # # fig,ax = plt.subplots()
 # # # ax.plot(x[20000:-1], y[3][20000:-1])

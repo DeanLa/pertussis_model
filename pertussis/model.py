@@ -1,80 +1,79 @@
 import numpy as np
 from pertussis import *
 import pymc as pm
+from .params.hetro_model import collect_params
 
-_J = AGE
-_K = ETH
+# _J = AGE
+# _K = ETH
+C = contacts
+M = 1e-6
 
 
 def hetro_model(INP, t, step, m1, omega_, phi):
-    from .params.hetro_model import collect_params
+    # from .params.hetro_model import collect_params
     T = reduce_time(t, step=step)
-    M = 1e-6
-    # unpack_values = [_J] * 6
 
     ## Compartments and Derivatives
     S, Vap, Vwp, Is, Ia, R = unpack(INP, *unpack_values)
-    dS, dVap, dVwp, dIs, dIa, dR = (np.zeros(uv) for uv in unpack_values)
+    dS, dVap, dVwp, dIs, dIa, dR = (np.zeros(uv) for uv in unpack_values) # Zeros by size
 
     ## Params
-    delta, lambda_s, lambda_a, gamma_a, \
-    gamma_s, omega, mu, alpha_ap, \
-    alpha_wp, c, \
-    epsilon_ap, epsilon_wp, omega_ap, omega_wp, \
-    a = \
+    delta, mu, a,\
+    gamma_a, gamma_s, \
+    omega, omega_ap, omega_wp, \
+    alpha_ap, alpha_wp, \
+    epsilon_ap, epsilon_wp, f = \
         collect_params(T, step)
 
-    lambda_ = beta(T - 1948, m1, omega_, phi)
-
-    e_ap = 1 - epsilon_ap # Helper
-    e_wp = 1 - epsilon_wp # Helper
+    ## Helpers and Pre-Calculations
     I = Ia + Is  # Helper
+    beta_ = beta(T - 1948, m1, omega_, phi) * f
+    IC = I.dot(C)
+    lambda_ = beta_ * IC
+
+    e_ap = 1 - epsilon_ap  # Helper
+    e_wp = 1 - epsilon_wp  # Helper
 
     ## Equations
 
     # Susceptible
     dS[0] = delta  # IN: Birth rate
     dS += omega * R + omega_ap * Vap + omega_wp * Vwp  # IN: Waning from Natural and vaccine
-    dS -= lambda_ * I.sum() * S  # OUT: Becoming infected
+    dS -= lambda_ * S  # OUT: Becoming infected
 
     # Vaccination
-    if T >= 1957:  # Begin wp
-        if T < 2002:
-            dS[:4] -= S[:4] * a[:4]  # OUT: Age and vaccinate wP
-            dVwp[1:5] += S[:4] * a[:4]  # IN: Age and vaccinate wP from S classes
-
+    if 2002 > T >= 1957:  # Begin wp
+        dVwp[1:5] += S[:4] * a[:4]  # IN: Age and vaccinate wP from S classes
+        dS[5:] += S[4:-1] * a[4:]#IN: Age from previous age no vaccine
 
     if T >= 2002:  # Begin aP
-        dS[:6] -= S[:6] * a[:6]  # OUT: Age and vaccinate aP
         dVap[1:7] += S[:6] * a[:6]  # IN: Age and vaccinate aP from S classes
+        dS[7:] += S[6:-1] * a[6:]  # #IN: Age from previous age no vaccine
 
-    # Something like dv[i] = (I*C[i,:]).sum
-    dVwp -= lambda_ * I.sum() * e_wp * Vwp  # OUT: Getting sick (reduced by efficacy)
-    dVap -= lambda_ * I.sum() * e_ap * Vwp  # OUT: Getting sick (reduced by efficacy)
+    dVwp -= lambda_ * e_wp * Vwp  # OUT: Getting sick (reduced by efficacy)
+    dVap -= lambda_ * e_ap * Vwp  # OUT: Getting sick (reduced by efficacy)
     dVap -= Vap * omega_ap  # OUT: Waning
     dVwp -= Vwp * omega_wp  # OUT: Waning
 
     # Infected
-    infected_ap = lambda_ * I.sum() * e_ap * Vap  # HELPER: Infected with ap
-    infected_wp = lambda_ * I.sum() * e_wp * Vwp + lambda_ * I.sum() * S  # HELPER: Infected with wp or no vaccine
+    infected_ap = lambda_ * e_ap * Vap  # HELPER: Infected with ap
+    infected_wp = lambda_ * e_wp * Vwp + lambda_ * I.sum() * S  # HELPER: Infected with wp or no vaccine
 
     dIs = alpha_ap * infected_ap + alpha_wp * infected_wp  # IN: Infected with symptoms chance
     dIs -= gamma_s * Is  # OUT: Recovered
     dIs += M
 
-    dIa = (1 - alpha_ap) * infected_ap + (1 - alpha_wp) * infected_wp # IN: Infected with NO symptoms chance
+    dIa = (1 - alpha_ap) * infected_ap + (1 - alpha_wp) * infected_wp  # IN: Infected with NO symptoms chance
     dIa -= gamma_a * Ia  # OUT: Recovered
     dIa += M
 
     # Recovered
-    dR = gamma_s * Is + gamma_a * Ia - omega * R # IN: Recovered from I
-    dR -= omega * R # OUT: Natrual waning
+    dR = gamma_s * Is + gamma_a * Ia - omega * R  # IN: Recovered from I
+    dR -= omega * R  # OUT: Natrual waning
     dR -= 2 * M
 
     ## Regular Aging
-    # S does not age to S, as it Ages to next vaccine
-    dS[7:] += S[6:-1] * a[6:]  # IN
-    dS[6:-1] -= S[6:-1] * a[6:]  # OUT
+    dS[:-1] -= S[:-1] * a # OUT: Age out to Next V or Next S, OUT is the same
 
     dVap[1:] += Vap[:-1] * a  # IN
     dVap[:-1] -= Vap[:-1] * a  # OUT
