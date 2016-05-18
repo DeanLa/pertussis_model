@@ -4,7 +4,7 @@ import pymc as pm
 
 
 def hetro_model(INP, t,
-                m1, o, p):
+                o, p, f):
     T = reduce_time(t, step=1 / N)
     ## Compartments and Derivatives
     S, Vap, Vwp, Is, Ia, R = unpack(INP, *unpack_values)
@@ -12,9 +12,9 @@ def hetro_model(INP, t,
 
     ## Helpers and Pre-Calculations
     I = Ia + Is  # Helper
-    beta_ = beta(T - 1948, m1, o, p) * f
+    beta_ = beta(T - 1948, o, p) * f
     IC = I.dot(C)
-    lambda_ = beta_ * IC
+    lambda_ = beta_ * IC  # Needs to be normalized
 
     e_ap = 1 - epsilon_ap  # Helper
     e_wp = 1 - epsilon_wp  # Helper

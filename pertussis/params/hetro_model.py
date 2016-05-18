@@ -26,7 +26,7 @@ a = N * np.array((1 / 6, 1 / 6, 1 / 6, 1 / 2, 6,
                   5, 5, 10, 10))
 # Constant Params
 # ===============
-f = 1e1 * _O  # Force of infection
+# f = 1e1 * _O  # Force of infection
 
 # Efficacy and Waning
 # =====================
@@ -87,5 +87,15 @@ Age Groups:
 14. 65 +
 
 (1) Assuming 1 Vaccine with changing efficacies. Otherwise it's never ending if someone lost immunity on 2nd vaccine,
-then what is their new efficacy after next vaccine? Assuming goes back to the normal efficacy
+then what is their new efficacy after next vaccine? Assuming goes back to the normal efficacy.
+(2) There is a need to normalize I accordingly - If the population grows larger, an individual still meets the same number
+of people per day. normalization needs to happen according to share in population.
+If AGE = S + V + I + R then I_t is I*AGE(t)/AGE(0). that is only normalized in the CONTACTS phase, and not for the
+"real" I.
+(3) there will be 3-4 f groups (susceptability levels) and f is a vector of the shape:
+(f1,f1,...,f1,f2,...f2,f3,...f3)
+(4) Real data is observed sometimes once a year and sometimes once a month. There is a need to address that.
+if once a year error is E^2 then once a month it's approx 12*(E/12)^2 = E^2/12. The model will favor the yearly
+observations in order to minimize the error.
+TODO: Needs to be addressed.
 '''

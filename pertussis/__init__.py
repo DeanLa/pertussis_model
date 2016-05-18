@@ -4,8 +4,8 @@ from itertools import chain
 from .params import *
 from .charts import *
 
-def beta(t, m, omega, phi):
-    return m * (1 + cos((2 * pi) * (phi / omega + t / omega)))
+def beta(t, omega, phi):
+    return (1 + cos((2 * pi) * (phi / omega + t / omega)))
 
 
 def pack_flat(Y):

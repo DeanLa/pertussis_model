@@ -9,7 +9,6 @@ from pertussis import *
 # State 0
 state_0 = collect_state0()
 state_0 = pack_flat(state_0)
-print (state_0.shape)
 sleep(0.01)  # makes prints clearer
 
 
@@ -21,14 +20,13 @@ t_start = expand_time(t_start, step=step)
 t_end = expand_time(t_end, step=step)
 t_range = np.arange(t_start, t_end + 0, 1)
 
-m1 = 0.1
 o = 4
 p = 2
 
 #
 clk = clock()
 RES = odeint(hetro_model, state_0, t_range,
-             args=(m1, o, p))
+             args=(o, p))
 print (clock()-clk)
 # # # Results
 x = reduce_time(t_range, start=t_start, step=step)
