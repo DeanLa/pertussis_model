@@ -28,12 +28,12 @@ def hetro_model(INP, t,
 
     # Vaccination
     if 2002 > T >= 1957:  # Begin wp
-        dVwp[1:5] += S[:4] * a[:4]  # IN: Age and vaccinate wP from S classes
-        dS[5:] += S[4:-1] * a[4:]  # IN: Age from previous age no vaccine
+        dVwp[1:1 + n_wp] += S[:n_wp] * a[:n_wp]  # IN: Age and vaccinate wP from S classes
+        dS[1 + n_wp:] += S[n_wp:-1] * a[n_wp:]  # IN: Age from previous age no vaccine
 
     if T >= 2002:  # Begin aP
-        dVap[1:7] += S[:6] * a[:6]  # IN: Age and vaccinate aP from S classes
-        dS[7:] += S[6:-1] * a[6:]  # #IN: Age from previous age no vaccine
+        dVap[1:1 + n_ap] += S[:n_ap] * a[:n_ap]  # IN: Age and vaccinate aP from S classes
+        dS[1 + n_ap:] += S[n_ap:-1] * a[n_ap:]  # #IN: Age from previous age no vaccine
 
     dVwp -= lambda_ * e_wp * Vwp  # OUT: Getting sick (reduced by efficacy)
     dVap -= lambda_ * e_ap * Vwp  # OUT: Getting sick (reduced by efficacy)

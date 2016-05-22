@@ -30,21 +30,26 @@ years = np.genfromtxt('./data/yearly.csv', delimiter=',', skip_header=1)[:, 0]
 # m1 = pm.Uniform('m1', 0, 1, value=0.1)
 o = pm.Uniform('omega', 3, 6, value=4)
 p = pm.Uniform('phi', 0, o + 0.1, value=2)
-f1 = pm.Uniform('f1',0,1)
-f2 = pm.Uniform('f2',0,1)
-f3 = pm.Uniform('f3',0,1)
+f1 = pm.Uniform('f1', 0, 1)
+f2 = pm.Uniform('f2', 0, 1)
+f3 = pm.Uniform('f3', 0, 1)
+
 
 @pm.deterministic
 def f(f1=f1, f2=f2, f3=f3):
-    s1,s2 = 5,5
+    s1, s2 = 5, 5
     s3 = J - s1 - s2
-    return np.concatenate((f1*np.ones(s1),
-                           f2*np.ones(s2),
-                           f3*np.ones(s3)))
+    return np.concatenate((f1 * np.ones(s1),
+                           f2 * np.ones(s2),
+                           f3 * np.ones(s3)))
+
+
 times = []
+
+
 @pm.deterministic
-def sim( o=o, p=p, f=f):
-    print('A ', end="")
+def sim(o=o, p=p, f=f):
+    # print('A ', end="")
     clk = clock()
     RES = odeint(hetro_model, state_0, t_range,
                  args=(o, p, f),
@@ -55,17 +60,17 @@ def sim( o=o, p=p, f=f):
     # print (RES[3].shape)
     res = reduce_year(RES[3].sum(axis=0))[1951 - t_start:2014 - t_start]
     # print (res.shape)
+    print(clock() - clk)
     times.append(clock() - clk)
     return res
 
 
-
 Y = pm.Normal('Y', mu=sim, tau=1, observed=True, value=data)
 #
-mcmc = pm.MCMC([Y, o, p, sim, f, f1,f2,f3], db="ram")
-mcmc.sample(iter=50, burn=0)
+mcmc = pm.MCMC([Y, o, p, sim, f, f1, f2, f3], db="ram")
+mcmc.sample(iter=3, burn=0)
 times = np.array(times)
-print (times.min(), times.mean(), times.max())
+print(times.min(), times.mean(), times.max())
 # print (mcmc.summary())
 m_f = mcmc.trace('f')[:].mean()
 m_o = mcmc.trace('omega')[:].mean()

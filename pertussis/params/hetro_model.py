@@ -32,6 +32,9 @@ a = N * np.array((1 / 6, 1 / 6, 1 / 6, 1 / 2, 6,
 # =====================
 epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
 epsilon_wp = np.ones(4) * 0.9
+n_ap = epsilon_ap.size
+n_wp = epsilon_ap.size
+print (n_ap)
 # Multiply the last value to create length of AGE
 epsilon_ap = np.concatenate((epsilon_ap, epsilon_ap[-1] * np.ones(J - 6)))
 epsilon_wp = np.concatenate([epsilon_wp, epsilon_wp[-1] * np.ones(J - 4)])
@@ -52,7 +55,7 @@ alpha_wp = 1  # Chance to be symptomatic from wP
 def collect_state0():
     _pop = _O / J
     # Compartments (State 0)
-    S = 0.1 * _pop
+    S = 0.5 * _pop
     Vap = 0 * _pop
     Vwp = 0 * _pop
     Is = 1e-3 * _pop
