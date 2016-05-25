@@ -9,14 +9,14 @@ M = 1e-6
 
 _O = np.ones(J)
 _Z = np.zeros(J)
-C = np.ones([J, J]) * 1 / J  # Contact Matrix
+C = np.ones([J, J])  # * 1 / J  # Contact Matrix
 # C = np.genfromtxt('./data/mossong/italy_phy.csv', delimiter=',') #Contact Matrix
 unpack_values = [J] * 6
 # Demographics
 # ============
 # Birth
 # delta = np.ones(100) * N / 75
-delta = 1.0 ** np.arange(0,100,1) * N / 75
+delta = 1.0 ** np.arange(0, 300, 1) * N / 75
 mu = delta
 # delta = (1 / 75) * N  # Births Yearly
 # mu = delta  # * _O  # Death [] yearly
@@ -34,7 +34,6 @@ epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
 epsilon_wp = np.ones(4) * 0.9
 n_ap = epsilon_ap.size
 n_wp = epsilon_ap.size
-print (n_ap)
 # Multiply the last value to create length of AGE
 epsilon_ap = np.concatenate((epsilon_ap, epsilon_ap[-1] * np.ones(J - 6)))
 epsilon_wp = np.concatenate([epsilon_wp, epsilon_wp[-1] * np.ones(J - 4)])
@@ -51,11 +50,12 @@ alpha_ap = 0.2  # Chance to be symptomatic from aP
 alpha_wp = 1  # Chance to be symptomatic from wP
 
 
-
 def collect_state0():
     _pop = _O / J
+    _pop = np.append(a / N, 10) / 75
+    print(_pop.sum())
     # Compartments (State 0)
-    S = 0.5 * _pop
+    S = 0.2 * _pop
     Vap = 0 * _pop
     Vwp = 0 * _pop
     Is = 1e-3 * _pop
@@ -89,6 +89,7 @@ Age Groups:
 13. 55-65
 14. 65 +
 
+2016_05_17
 (1) Assuming 1 Vaccine with changing efficacies. Otherwise it's never ending if someone lost immunity on 2nd vaccine,
 then what is their new efficacy after next vaccine? Assuming goes back to the normal efficacy.
 (2) There is a need to normalize I accordingly - If the population grows larger, an individual still meets the same number
@@ -101,4 +102,11 @@ If AGE = S + V + I + R then I_t is I*AGE(t)/AGE(0). that is only normalized in t
 if once a year error is E^2 then once a month it's approx 12*(E/12)^2 = E^2/12. The model will favor the yearly
 observations in order to minimize the error.
 TODO: Needs to be addressed.
+
+2016_05_24
+(5) Need to check if proportion of people at age groups does not change.
+(6) The efficacy is measured by which part of the V compartments has a chance to move
+to I. It is different from binary moving epsilon to V and 1-epsilon to R with binary
+results. GT is probably in the middle, but this model seems good and I justify that
+with how there is no cocooning effect (TODO: REF)
 '''
