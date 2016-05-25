@@ -3,17 +3,13 @@ import matplotlib.pyplot as plt
 import pymc as pm
 from scipy.integrate import odeint
 from time import clock, sleep
+from datetime import datetime as dt
 from pprint import pprint
 from pertussis import *
 
-# State 0
-state_0 = collect_state0()
-state_0 = pack_flat(state_0)
-sleep(0.01)  # makes prints clearer
-
 # # Initial Parameters
 t_start = 1948
-t_end = 2024
+t_end = 2015
 step = 1 / N
 # t_start = expand_time(t_start, step=step)
 t_end = expand_time(t_end, step=step)
@@ -23,16 +19,33 @@ t_range = np.arange(t_start, t_end + 0, 1)
 data = np.genfromtxt('./data/yearly.csv', delimiter=',', skip_header=1)[:, 1]
 data /= 100000
 years = np.genfromtxt('./data/yearly.csv', delimiter=',', skip_header=1)[:, 0]
-#
-# ###### Run Model
-#
+# TODO: Data Monthly
+# data_month
+# months
+
+#######################
+###### Run Model ######
+#######################
+i0 = pm.Uniform("Is0", 0, 0.1)
+s0 = pm.Uniform("S0", 0.1, 1 - i0)
+
+
+# State 0
+@pm.deterministic
+def state_0(S=s0, I=i0):
+    state_0 = collect_state0(S, I)
+    # state_0 = pack_flat(state_0)
+    return state_0
+
+
+# sleep(0.01)  # makes prints clearer
+
 # Priors
-# m1 = pm.Uniform('m1', 0, 1, value=0.1)
 o = pm.Uniform('omega', 3, 6, value=4)
 p = pm.Uniform('phi', 0, o + 0.1, value=2)
-f1 = pm.Uniform('f1', 0, 1)
-f2 = pm.Uniform('f2', 0, 1)
-f3 = pm.Uniform('f3', 0, 1)
+f1 = pm.Uniform('f1', 0, 0.5)
+f2 = pm.Uniform('f2', 0, 0.5)
+f3 = pm.Uniform('f3', 0, 0.5)
 
 
 @pm.deterministic
@@ -51,42 +64,70 @@ times = []
 def sim(o=o, p=p, f=f):
     # print('A ', end="")
     clk = clock()
-    RES = odeint(hetro_model, state_0, t_range,
-                 args=(o, p, f),
-                 full_output=False)
+    RES = odeint(hetro_model, pack_flat(state_0), t_range,
+                 args=(o, p, f))
 
     # print (RES.shape)
+    # print(RES.sum(axis=1))
     RES = unpack(RES.T, *unpack_values)
     # print (RES[3].shape)
-    res = reduce_year(RES[3].sum(axis=0))[1951 - t_start:2014 - t_start]
+    # res = reduce_year(RES[3].sum(axis=0))[1951 - t_start:2014 - t_start]
     # print (res.shape)
     print(clock() - clk)
     times.append(clock() - clk)
+    return RES
+
+
+@pm.deterministic
+def mu1(RES=sim):
+    res = reduce_year(RES[3].sum(axis=0))[1951 - t_start:2014 - t_start]
     return res
 
 
-Y = pm.Normal('Y', mu=sim, tau=1, observed=True, value=data)
-#
-mcmc = pm.MCMC([Y, o, p, sim, f, f1, f2, f3], db="ram")
-mcmc.sample(iter=3, burn=0)
+# TODO: Two sigmas
+sigma1 = pm.Uniform('sigma1', 0, 0.5)
+# sigma2 = pm.Uniform('sigma2', 0, sigma1/12)
+Y1 = pm.Normal('Y1', mu=mu1, tau=1 / sigma1 ** 2, observed=True, value=data)
+# Y2 = pm.Normal('Y2', mu=mu2, tau=1 / sigma2 ** 2, observed=True, value=data_monthly)
+
+# TODO: Set weights
+
+model = pm.Model([Y1, o, p, sim, f, f1, f2, f3, mu1, sigma1, s0, i0, state_0])
+# TODO: Other Backend
+mcmc = pm.MCMC(model, db="ram")
+mcmc.sample(iter=5, burn=0)
 times = np.array(times)
+print()
 print(times.min(), times.mean(), times.max())
 # print (mcmc.summary())
-m_f = mcmc.trace('f')[:].mean()
-m_o = mcmc.trace('omega')[:].mean()
-m_p = mcmc.trace('phi')[:].mean()
-plot_stoch_vars(mcmc)
+t_tally = 0
+m_f = mcmc.trace('f')[t_tally:].mean()
+m_o = mcmc.trace('omega')[t_tally:].mean()
+m_p = mcmc.trace('phi')[t_tally:].mean()
+m_s = mcmc.trace('S0')[t_tally:].mean()
+m_i = mcmc.trace('Is0')[t_tally:].mean()
+
+# Show mean values fit
+state_0 = collect_state0(m_s, m_i)
+state_0 = pack_flat(state_0)
+clk = clock()
 RES = odeint(hetro_model, state_0, t_range,
              args=(m_o, m_p, m_f))
+print(clock() - clk)
 # # Results
 x = reduce_time(t_range, start=t_start, step=step)
 y = unpack(RES.T, *unpack_values)
-h = y[0] + y[1] + y[2]
+h = sum([i for i in y[:3]])
+all = sum([i for i in y])
 y.append(h)
-# #
-fig2, ax2 = draw_model(x, y[0:3], ["Susceptible", "Vaccinated ap", "Vaccinated wp"], split=False, collapse=False)
-fig1, ax1 = draw_model(x, y[3:7], ["Infected s", "Infected Ia", "Recovered", "Healthy"], split=0, collapse=True)
-ax1[0].scatter(years, data)
+y.append(all)
+
+# fig1, ax1 = draw_model(x, y[3:], ["Infected Is", "Infected Ia", "Recovered", "Healthy", "All"], split=0, collapse=False)
+fig3, ax3 = draw_model(x, y[3:], ["Infected Is", "Infected Ia", "Recovered", "Healthy", "All"], split=0, collapse=True)
+fig2, ax2 = draw_model(x, y[0:3], ["Susceptible", "Vaccinated ap", "Vaccinated wp"], split=False, collapse=True)
+ax3[0].scatter(years, data)
+fig4, ax4 = plot_stoch_vars(mcmc)
+fig4.savefig('./img/mcmc{}.png'.format(dt.utcnow()).replace(':', '-'))
 # fig,ax = plt.subplots()
 # ax.plot(x[20000:-1], y[3][20000:-1])
 plt.tight_layout()

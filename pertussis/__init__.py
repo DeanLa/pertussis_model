@@ -4,6 +4,12 @@ from itertools import chain
 from .params import *
 from .charts import *
 
+
+def check(x=2):
+    print("1asdas")
+    print(x)
+
+
 def beta(t, omega, phi):
     return (1 + cos((2 * pi) * (phi / omega + t / omega)))
 
@@ -72,6 +78,11 @@ def reduce_year(vec):
     # print
     return vec.sum(axis=1)
 
-
-# from .params import *
+def get_death_rate(path = './data/demographics/death_rate.csv'):
+    death_rate = pd.read_csv(path)  #
+    death_rate.interpolate(method='polynomial', order=2, inplace=True)
+    for col in _group_names:
+        poly_extrapolate(death_rate, 'Year', col, deg=1)
+    death_rate = death_rate.set_index('Year')
+    return death_rate
 from .model import *

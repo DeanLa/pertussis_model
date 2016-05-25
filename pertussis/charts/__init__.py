@@ -34,11 +34,9 @@ def draw_model(x, y, labels=None, split=2, collapse=False):
         fig, axs = draw_split(x, y, which=split)
     else:
         fig, axs = draw_no_split(x, y)
-    # fig.set_figwidth(8)
-    # fig.set_figheight(8)
     for i in range(l):
         ax = axs[i]
-        z = y[i]
+        z = y[i][:,:]
         if collapse:
             z=z.sum(axis=0)
         lines = ax.plot(x, z.T, lw=1.3)
@@ -54,5 +52,12 @@ def draw_model(x, y, labels=None, split=2, collapse=False):
         ax.plot([2002, 2002], [0, ub], "k--")
         if l <= 3:
             ax.legend(lines, [j+1 for j in range(len(lines))], loc='lower left')
+    if split:
+        axs[split].legend(lines, [j+1 for j in range(len(lines))], loc='lower left')
 
     return fig, axs
+
+# def draw_age_groups(x, y):
+#     fig, axs = plt.subplots(4, 4)
+#     axs = (np.hstack(axs))
+#     prin
