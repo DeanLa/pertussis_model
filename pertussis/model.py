@@ -19,8 +19,8 @@ def hetro_model(INP, t,
     lambda_ = beta_ * IC  # Needs to be normalized
     # TODO: lambda_a - be more infectious on asymptomatic
     lambda_a = zeta * lambda_
-    e_ap = 1# - epsilon_ap  # Helper
-    e_wp = 1# - epsilon_wp  # Helper
+    e_ap = 1  # - epsilon_ap  # Helper
+    e_wp = 1  # - epsilon_wp  # Helper
 
     ## Equations
 
@@ -30,7 +30,89 @@ def hetro_model(INP, t,
     dS -= lambda_ * S  # OUT: Becoming infected
 
     # Vaccination
-    if T  < 1957:
+    if T < 1957:
+        dS[1:] += S[:-1] * a  # IN
+
+    if 2002 > T >= 1957:  # Begin wp
+        dVwp[1:1 + n_wp] += S[:n_wp] * a[:n_wp]  # IN: Age and vaccinate wP from S classes
+        dS[1 + n_wp:] += S[n_wp:-1] * a[n_wp:]  # IN: Age from previous age no vaccine
+        pass
+    if T >= 2002:  # Begin aP
+        dVap[1:1 + n_ap] += S[:n_ap] * a[:n_ap]  # IN: Age and vaccinate aP from S classes
+        dS[1 + n_ap:] += S[n_ap:-1] * a[n_ap:]  # #IN: Age from previous age no vaccine
+
+    # dS[1:] += S[:-1] * a  # IN
+    dVap -= lambda_ * e_ap * Vap  # OUT: Getting sick (reduced by efficacy)
+    dVwp -= lambda_ * e_wp * Vwp  # OUT: Getting sick (reduced by efficacy)
+    dVap -= Vap * omega_ap  # OUT: Waning
+    dVwp -= Vwp * omega_wp  # OUT: Waning
+
+    # Infected
+    infected_ap = lambda_ * e_ap * Vap  # HELPER: Infected with ap
+    infected_wp = lambda_ * e_wp * Vwp + lambda_ * S  # HELPER: Infected with wp or no vaccine
+
+    dIs = alpha_ap * infected_ap + alpha_wp * infected_wp  # IN: Infected with symptoms chance
+    dIs -= gamma_s * Is  # OUT: Recovered
+    dIs += M
+
+    dIa = (1 - alpha_ap) * infected_ap + (1 - alpha_wp) * infected_wp  # IN: Infected with NO symptoms chance
+    dIa -= gamma_a * Ia  # OUT: Recovered
+    dIa += M
+
+    # Recovered
+    dR = gamma_s * Is + gamma_a * Ia  # IN: Recovered from I
+    dR -= omega * R  # OUT: Natrual waning
+    dR -= 2 * M
+
+    ## Regular Aging
+    # S
+    dS[:-1] -= S[:-1] * a  # OUT: Age out to Next V or Next S, OUT is the same
+    # V
+    dVap[1:] += Vap[:-1] * a  # IN
+    dVap[:-1] -= Vap[:-1] * a  # OUT
+    dVwp[1:] += Vwp[:-1] * a  # IN
+    dVwp[:-1] -= Vwp[:-1] * a  # OUT
+    # I and R
+    dR[1:] += R[:-1] * a  # IN
+    dR[:-1] -= R[:-1] * a  # OUT
+    dIs[1:] += Is[:-1] * a  # IN
+    dIs[:-1] -= Is[:-1] * a  # OUT
+    dIa[1:] += Ia[:-1] * a  # IN
+    dIa[:-1] -= Ia[:-1] * a  # OUT
+    ## Housekeeping
+    Y = pack_flat((dS, dVap, dVwp, dIs, dIa, dR))
+    Y -= mu[int(T) - 1948] * INP  # OUT: Death
+    return Y
+
+
+def hetro_model_relative(INP, t,
+                o, p, f):
+    T = reduce_time(t, step=1 / N)
+    ## Compartments and Derivatives
+    S, Vap, Vwp, Is, Ia, R = unpack(INP, *unpack_values)
+    A = S + Vap + Vwp + Is + Ia + R
+    dS, dVap, dVwp, dIs, dIa, dR = (np.zeros(uv) for uv in unpack_values)  # Zeros by size
+
+    ## Helpers and Pre-Calculations
+    # TODO: lambda_a needs to be addressed from here
+    I = Ia + Is  # Helper
+    beta_ = beta(T - 1948, o, p) * f
+    IC = I.dot(C)
+    lambda_ = beta_ * IC  # Needs to be normalized
+    # TODO: lambda_a - be more infectious on asymptomatic
+    lambda_a = zeta * lambda_
+    e_ap = 1  # - epsilon_ap  # Helper
+    e_wp = 1  # - epsilon_wp  # Helper
+
+    ## Equations
+
+    # Susceptible
+    dS[0] = delta[int(T) - 1948]  # IN: Birth rate
+    dS += omega * R + omega_ap * Vap + omega_wp * Vwp  # IN: Waning from Natural and vaccine
+    dS -= lambda_ * S  # OUT: Becoming infected
+
+    # Vaccination
+    if T < 1957:
         dS[1:] += S[:-1] * a  # IN
 
     if 2002 > T >= 1957:  # Begin wp
