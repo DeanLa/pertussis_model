@@ -18,7 +18,7 @@ def hetro_model(INP, t,
     IC = I.dot(C)
     lambda_ = beta_ * IC  # Needs to be normalized
     # TODO: lambda_a - be more infectious on asymptomatic
-    lambda_a = zeta * lambda_
+    # lambda_a = zeta * lambda_
     e_ap = 1  # - epsilon_ap  # Helper
     e_wp = 1  # - epsilon_wp  # Helper
 
