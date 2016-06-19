@@ -4,7 +4,7 @@ import pymc as pm
 
 
 def hetro_model(INP, t,
-                o, p, f):
+                o, p, f, zeta):
     T = reduce_time(t, step=1 / N)
     ## Compartments and Derivatives
     S, Vap, Vwp, Is, Ia, R = unpack(INP, *unpack_values)
@@ -16,9 +16,13 @@ def hetro_model(INP, t,
     I = Ia + Is  # Helper
     beta_ = beta(T - 1948, o, p) * f
     IC = I.dot(C)
-    lambda_ = beta_ * IC  # Needs to be normalized
-    # TODO: lambda_a - be more infectious on asymptomatic
-    # lambda_a = zeta * lambda_
+    IsC = Is.dot(C)
+    IaC = Ia.dot(C)
+    # print (beta_.shape, IC.shape)
+    # lambda_ = beta_ * IC  # Needs to be normalized
+    lambda_s = beta_ * IaC
+    lambda_a = beta_ * IsC * zeta
+    lambda_ = lambda_s + lambda_a
     e_ap = 1  # - epsilon_ap  # Helper
     e_wp = 1  # - epsilon_wp  # Helper
 
