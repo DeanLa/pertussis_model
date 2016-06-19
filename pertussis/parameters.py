@@ -75,7 +75,6 @@ alpha_wp = 1  # Chance to be symptomatic from wP
 def collect_state0(S0=0.2, Is0=1e-3):
     _pop = _O / J
     _pop = np.append(a / N, 10) / 75
-    print ("YAY")
     # print(_pop.sum())
     # Compartments (State 0)
     S = S0 * _pop

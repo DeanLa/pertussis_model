@@ -1,14 +1,12 @@
-from scipy.integrate import odeint
-import numpy as np
-from numpy import cos, pi
-import matplotlib.pyplot as plt
 import time
+
+import pymc as pm
+from pertussis.charts_old import draw_model
+from scipy.integrate import odeint
+
 from pertussis import *
 from pertussis.model import vaccine_model
-from pertussis.params.main_model import collect_state0
-from pertussis.charts import draw_model
-import pymc as pm
-from time import clock
+from z_old.params import collect_state0
 
 plt.style.use('ggplot')
 

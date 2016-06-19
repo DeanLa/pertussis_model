@@ -1,12 +1,13 @@
-# import numpy as np
-# from numpy import cos, pi
-# from itertools import chain
+from .funcs import *
 from .parameters import *
 from .charts import *
 from .cases import *
-from .funcs import *
-from .model import *
+from .model import * # Requires Parameters
 
+
+# import numpy as np
+# from numpy import cos, pi
+# from itertools import chain
 # def check(x=2):
 #     print("1asdas")
 #     print(x)

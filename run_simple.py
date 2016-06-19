@@ -1,10 +1,10 @@
-from scipy.integrate import odeint
-import numpy as np
 import matplotlib.pyplot as plt
-
+import numpy as np
+from pertussis.charts_old import draw_model
 from pertussis.simple import main_model
-from pertussis.params.simple import collect_state0
-from pertussis.charts import draw_model
+from scipy.integrate import odeint
+
+from z_old.params import collect_state0
 
 plt.style.use('ggplot')
 

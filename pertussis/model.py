@@ -1,6 +1,4 @@
-import numpy as np
 from pertussis import *
-import pymc as pm
 
 
 def hetro_model(INP, t,
@@ -19,10 +17,10 @@ def hetro_model(INP, t,
     IsC = Is.dot(C)
     IaC = Ia.dot(C)
     # print (beta_.shape, IC.shape)
-    # lambda_ = beta_ * IC  # Needs to be normalized
-    lambda_s = beta_ * IaC
-    lambda_a = beta_ * IsC * zeta
-    lambda_ = lambda_s + lambda_a
+    lambda_ = beta_ * IC  # Needs to be normalized
+    # lambda_s = beta_ * IaC
+    # lambda_a = beta_ * IsC * zeta
+    # lambda_ = lambda_s + lambda_a
     e_ap = 1  # - epsilon_ap  # Helper
     e_wp = 1  # - epsilon_wp  # Helper
 
@@ -172,7 +170,7 @@ def hetro_model_relative(INP, t,
 
 
 def vaccine_model(INP, t, step, m1, omega_, phi):
-    from .params.main_model import collect_params
+    from z_old.params import collect_params
     T = reduce_time(t, step=step)
     M = 1e-6
 
