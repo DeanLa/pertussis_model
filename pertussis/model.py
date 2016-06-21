@@ -1,9 +1,17 @@
 from pertussis import *
 
+# def age_model(INP, t, d):
+#     delta = d
 
 def hetro_model(INP, t,
-                o, p, f, zeta):
+                o, p, f, zeta, d):
+    delta = d
+    mu = d
+
     T = reduce_time(t, step=1 / N)
+    # T = t
+    # print (T)
+    # print (t,' ',T)
     ## Compartments and Derivatives
     S, Vap, Vwp, Is, Ia, R = unpack(INP, *unpack_values)
     A = S + Vap + Vwp + Is + Ia + R
@@ -12,7 +20,7 @@ def hetro_model(INP, t,
     ## Helpers and Pre-Calculations
     # TODO: lambda_a needs to be addressed from here
     I = Ia + Is  # Helper
-    beta_ = beta(T - 1948, o, p) * f
+    beta_ = beta(T, o, p) * f
     IC = I.dot(C)
     IsC = Is.dot(C)
     IaC = Ia.dot(C)
@@ -27,6 +35,7 @@ def hetro_model(INP, t,
     ## Equations
 
     # Susceptible
+    # print (int(T) - 1948)
     dS[0] = delta[int(T) - 1948]  # IN: Birth rate
     dS += omega * R + omega_ap * Vap + omega_wp * Vwp  # IN: Waning from Natural and vaccine
     dS -= lambda_ * S  # OUT: Becoming infected
@@ -83,7 +92,14 @@ def hetro_model(INP, t,
     dIa[:-1] -= Ia[:-1] * a  # OUT
     ## Housekeeping
     Y = pack_flat((dS, dVap, dVwp, dIs, dIa, dR))
-    Y -= mu[int(T) - 1948] * INP  # OUT: Death
+    # Older people die more
+    mu = mu[int(T) - 1948]
+    r = 0.5
+    mu_v = np.ones(J) * mu * r
+    mu_v[-1] += (1 - r) * mu * J
+
+    Y -= mu_v * INP  # OUT: Death
+    # Y[-1] -= delta[int(T) - 1948]
     return Y
 
 

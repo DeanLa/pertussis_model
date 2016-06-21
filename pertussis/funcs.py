@@ -45,24 +45,29 @@ def unpack(Y, *args):
     return res
 
 
-def reduce_time(t, start=1948, step=1):
+def reduce_time(days, start=1948, step=365):
     '''Takes the number of days since @param:start and return the time (usually year)'''
-    return (t - start) / step + start
+    return days / step + start
 
 
-def expand_time(t, start=1948, step=1):
+def expand_time(t, start=1948, step=365):
     '''Takes a time (usually year) and returns the number of days since @param:start'''
-    return start + (t - start) * step
+    return (t - start) * step
 
 
 def reduce_month(vec):
     months = (31, 28, 31, 30,
               31, 30, 31, 31,
               30, 31, 30, 31)
+    months = np.cumsum(months)
+    def my_reduce(vec):
+        np.split(vec, months)
+
     l = vec.size
     assert l % 365 == 0, "Vector must divide with 365"
     vec = vec.reshape(int(l / 365), 365)
-    np.apply_along_axis(unpack, 1, vec, months)
+    print (vec.shape)
+    np.apply_along_axis(my_reduce, 1, vec, months)
     return vec
 
 

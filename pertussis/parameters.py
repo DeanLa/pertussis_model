@@ -10,19 +10,29 @@ M = 1e-6
 _O = np.ones(J)
 _Z = np.zeros(J)
 # C = np.ones([J, J])  # * 1 / J  # Contact Matrix
-C = np.genfromtxt('./data/mossong/contact_11.csv', delimiter=',') #Contact Matrix
+C = np.genfromtxt('./data/mossong/contact_11.csv', delimiter=',')  # Contact Matrix
 # print (C)
 unpack_values = [J] * 6
+
+
 # Demographics
 # ============
 # Birth
 # delta = np.ones(100) * N / 75
-delta = np.genfromtxt('./data/demographics/birth_rate.csv', delimiter=',',
-                      skip_header=1, usecols=[3]) * N
-delta = np.append(delta, delta[-1]*np.ones(200))
+
 # print (delta)
-# delta = 1.0 ** np.arange(0, 300, 1) * N / 75
-mu = delta
+def get_delta():
+    # delta = 1.0 ** np.arange(0, 300, 1) * N / 75
+    delta = np.genfromtxt('./data/demographics/birth_rate.csv', delimiter=',',
+                          skip_header=1, usecols=[3]) * N
+
+    # print ("Y")
+    delta = np.append(delta, delta[-1] * np.ones(300))
+    return delta
+
+
+# delta = get_delta()
+# mu = delta
 # delta = (1 / 75) * N  # Births Yearly
 # mu = delta  # * _O  # Death [] yearly
 
@@ -34,16 +44,16 @@ mu = delta
 #                 14,16,18,20,22,2*12,
 #                 3*12,4*12,5*12,25*12,45*12,65*12,75*12))
 
-a_l = np.array((0,2/12,4/12,6/12,1,
-                7,13,20,25,45,65))
-a_u = np.array((2,4/12,6/12,1,
-                7,13,20,25,45,65,75))
+a_l = np.array((0, 2 / 12, 4 / 12, 6 / 12, 1,
+                7, 13, 20, 25, 45, 65))
+a_u = np.array((2 / 12, 4 / 12, 6 / 12, 1,
+                7, 13, 20, 25, 45, 65, 75))
 # a = N * np.array((1 / 6, 1 / 6, 1 / 6, 1 / 2, 6,
 #                   6, 7, 5, 5, 5,
 #                   5, 5, 10, 10))
 # a_u = a_u / 12
 # a_l = a_l / 12
-a = N * (a_u - a_l)[:-1]
+a = N / (a_u - a_l)[:-1]
 # print (a, a.size, a_u.size)
 
 # Constant Params
@@ -72,10 +82,15 @@ alpha_ap = 0.5  # Chance to be symptomatic from aP
 alpha_wp = 1  # Chance to be symptomatic from wP
 
 
-def collect_state0(S0=0.2, Is0=1e-3):
-    _pop = _O / J
-    _pop = np.append(a / N, 10) / 75
-    # print(_pop.sum())
+def collect_state0(S0=0.2, Is0=1e-3, death=75):
+    # _pop = _O / J
+    # _pop = np.append(a, death - 65)# / death
+    _pop = (a_u - a_l)[:-1]
+    _pop = np.append(_pop, death - 65)
+    _pop /= _pop.sum()
+    print(_pop)
+    print(_pop.sum())
+    print ()
     # Compartments (State 0)
     S = S0 * _pop
     Vap = 0 * _pop
@@ -143,4 +158,10 @@ Group (from Dan: The model includes n = 19 age groups: 0–2, 2–4, 4–6, 6–
 
 2016_06_16
 Added monthly data. Some stochastics seem to explore less than others, maybe it's related to the pymc algorithm.
+
+2016_06_19
+(1) Take IMOH data and create a bar chart of proportion of sick people
+(2) try to manually fit the data of cumsums.
+(3) remember to multiply proportion by Danny Cohen's serology evidence
+(4) find parameters so age proportions are similar to 85
 '''

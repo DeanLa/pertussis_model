@@ -25,11 +25,11 @@ def draw_split(x, y, which):
     return fig, axs
 
 
-def draw_model(x, y, labels=None, split=2, collapse=False):
+def draw_model(x, y, labels=None, split=None, collapse=False):
     l = len(y)
     if l > 5:
         split = False
-    if split:
+    if type(split) is int:
         assert l <= 5, "Must have at most 5 variables"
         fig, axs = draw_split(x, y, which=split)
     else:
