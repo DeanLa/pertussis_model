@@ -37,12 +37,7 @@ def get_delta():
 # mu = delta  # * _O  # Death [] yearly
 
 # Aging
-# a_l = np.array((0,2,4,6,8,10,12,
-#                 14,16,18,20,22,2*12,
-#                 3*12,4*12,5*12,25*12,45*12,65*12))
-# a_u = np.array((2,4,6,8,10,12,
-#                 14,16,18,20,22,2*12,
-#                 3*12,4*12,5*12,25*12,45*12,65*12,75*12))
+
 
 a_l = np.array((0, 2 / 12, 4 / 12, 6 / 12, 1,
                 7, 13, 20, 25, 45, 65))
@@ -62,8 +57,9 @@ a = N / (a_u - a_l)[:-1]
 
 # Efficacy and Waning
 # =====================
-epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
-epsilon_wp = np.ones(4) * 0.9
+# epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98)) # [3]
+epsilon_ap = np.ones(6) * 0
+epsilon_wp = np.ones(4) * 1
 n_ap = epsilon_ap.size
 n_wp = epsilon_ap.size
 # Multiply the last value to create length of AGE
@@ -71,7 +67,7 @@ epsilon_ap = np.concatenate((epsilon_ap, epsilon_ap[-1] * np.ones(J - 6)))
 epsilon_wp = np.concatenate([epsilon_wp, epsilon_wp[-1] * np.ones(J - 4)])
 
 omega = (1 / 30) * N  # Loss of immunity [1] 3e-5 est yearly [3] 1/30 yearly
-omega_ap = (1 / 3) * N  # Waning
+omega_ap = (1 / 30) * N  # Waning
 omega_wp = (1 / 30) * N  # Waning
 
 gamma_s = (1 / 24)  # Healing rate Symptomatic [1] 1/6 [3] 1/25
@@ -88,9 +84,9 @@ def collect_state0(S0=0.2, Is0=1e-3, death=75):
     _pop = (a_u - a_l)[:-1]
     _pop = np.append(_pop, death - 65)
     _pop /= _pop.sum()
-    print(_pop)
-    print(_pop.sum())
-    print ()
+    # print(_pop)
+    # print(_pop.sum())
+    # print ()
     # Compartments (State 0)
     S = S0 * _pop
     Vap = 0 * _pop

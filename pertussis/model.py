@@ -1,7 +1,11 @@
 from pertussis import *
 
-# def age_model(INP, t, d):
-#     delta = d
+
+#
+# def test_model():
+#     del (J)
+#     from pertussis import J
+#     print (J)
 
 def hetro_model(INP, t,
                 o, p, f, zeta, d):
@@ -9,12 +13,11 @@ def hetro_model(INP, t,
     mu = d
 
     T = reduce_time(t, step=1 / N)
-    # T = t
-    # print (T)
-    # print (t,' ',T)
+
     ## Compartments and Derivatives
     S, Vap, Vwp, Is, Ia, R = unpack(INP, *unpack_values)
     A = S + Vap + Vwp + Is + Ia + R
+    # print (A)
     dS, dVap, dVwp, dIs, dIa, dR = (np.zeros(uv) for uv in unpack_values)  # Zeros by size
 
     ## Helpers and Pre-Calculations
@@ -29,8 +32,8 @@ def hetro_model(INP, t,
     # lambda_s = beta_ * IaC
     # lambda_a = beta_ * IsC * zeta
     # lambda_ = lambda_s + lambda_a
-    e_ap = 1  # - epsilon_ap  # Helper
-    e_wp = 1  # - epsilon_wp  # Helper
+    e_ap = 1 - epsilon_ap  # Helper
+    e_wp = 1 - epsilon_wp  # Helper
 
     ## Equations
 
@@ -64,16 +67,16 @@ def hetro_model(INP, t,
 
     dIs = alpha_ap * infected_ap + alpha_wp * infected_wp  # IN: Infected with symptoms chance
     dIs -= gamma_s * Is  # OUT: Recovered
-    dIs += M
+    # dIs += M
 
     dIa = (1 - alpha_ap) * infected_ap + (1 - alpha_wp) * infected_wp  # IN: Infected with NO symptoms chance
     dIa -= gamma_a * Ia  # OUT: Recovered
-    dIa += M
+    # dIa += M
 
     # Recovered
     dR = gamma_s * Is + gamma_a * Ia  # IN: Recovered from I
     dR -= omega * R  # OUT: Natrual waning
-    dR -= 2 * M
+    # dR -= 2 * M
 
     ## Regular Aging
     # S
@@ -93,18 +96,23 @@ def hetro_model(INP, t,
     ## Housekeeping
     Y = pack_flat((dS, dVap, dVwp, dIs, dIa, dR))
     # Older people die more
+    '''I fix the death rate so that old people die more ofern
+    If this isn't adjusted to oldest age will explode. We manually fit this to data'''
     mu = mu[int(T) - 1948]
-    r = 0.5
+    r = 0.7
     mu_v = np.ones(J) * mu * r
     mu_v[-1] += (1 - r) * mu * J
-
+    s = (mu_v * A).sum()
+    # print ("S", s, mu, mu/s)
+    mu_v = np.tile(mu_v, 6) * mu / s
     Y -= mu_v * INP  # OUT: Death
+    # print (Y)
     # Y[-1] -= delta[int(T) - 1948]
     return Y
 
 
 def hetro_model_relative(INP, t,
-                o, p, f):
+                         o, p, f):
     T = reduce_time(t, step=1 / N)
     ## Compartments and Derivatives
     S, Vap, Vwp, Is, Ia, R = unpack(INP, *unpack_values)

@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
 
-dist98 = np.array([0.003854352, 0.003854352, 0.003854352,
-                   0.011563056, 0.118140906, 0.111728033,
-                   0.123872792, 0.084315304, 0.26262968,
-                   0.175186235, 0.101000938])
+
+def get_dist_98():
+    return np.array([0.003854352, 0.003854352, 0.003854352,
+                     0.011563056, 0.118140906, 0.111728033,
+                     0.123872792, 0.084315304, 0.26262968,
+                     0.175186235, 0.101000938])
 
 
 def get_death_rate(path='./data/demographics/death_rate.csv'):
@@ -17,7 +19,7 @@ def get_death_rate(path='./data/demographics/death_rate.csv'):
 
 
 def cases_yearly(path='./data/yearly.csv'):
-    '''Loads the yearly data'''
+    '''Loads the yearly data per 1e5'''
     data = np.genfromtxt(path, delimiter=',', skip_header=1)[:, 1]
     years = np.genfromtxt(path, delimiter=',', skip_header=1)[:, 0]
     print("{} Yearly data values".format(len(years)))
@@ -25,7 +27,7 @@ def cases_yearly(path='./data/yearly.csv'):
 
 
 def cases_monthly(path='./data/_imoh/cases.csv'):
-    '''Loads Monthly Data'''
+    '''Loads Monthly Data per 1e5'''
     df = pd.read_csv(path)
     try:
         pop = pd.read_csv('./data/demographics/birth_rate.csv')
@@ -42,3 +44,7 @@ def cases_monthly(path='./data/_imoh/cases.csv'):
     months = df.index.get_level_values(level=0).values + df.index.get_level_values(level=1).values / 12
     print("{} Monthly data values".format(len(months)))
     return data.values, months
+
+
+def total_sick(path='./data/_imoh/cases.csv'):
+    df = pd.read_csv

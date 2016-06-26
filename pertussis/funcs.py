@@ -59,16 +59,16 @@ def reduce_month(vec):
     months = (31, 28, 31, 30,
               31, 30, 31, 31,
               30, 31, 30, 31)
-    months = np.cumsum(months)
-    def my_reduce(vec):
-        np.split(vec, months)
+
+    # def my_reduce(vec):
 
     l = vec.size
     assert l % 365 == 0, "Vector must divide with 365"
-    vec = vec.reshape(int(l / 365), 365)
-    print (vec.shape)
-    np.apply_along_axis(my_reduce, 1, vec, months)
-    return vec
+    months = np.tile(months, int(l / 365))
+    months = np.cumsum(months)
+    res = np.split(vec, months[:-1])
+    res = np.array([a.sum() for a in res])
+    return res
 
 
 def reduce_year(vec):
@@ -80,4 +80,6 @@ def reduce_year(vec):
     # print
     return vec.sum(axis=1)
 
-
+def mse(x,y):
+    res = (x-y)**2
+    return res.mean()

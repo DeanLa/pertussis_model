@@ -12,7 +12,7 @@ def draw_no_split(x, y):
 
 def draw_split(x, y, which):
     l = len(y)
-    fig = plt.figure(figsize=(14, 11))
+    fig = plt.figure(figsize=(14, 7))
     gs = plt.GridSpec(4, 2)
     axs = []
     axs.append(plt.subplot(gs[2, 0]))
