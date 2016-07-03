@@ -18,7 +18,7 @@ unpack_values = [J] * 6
 # Demographics
 # ============
 # Birth
-# delta = np.ones(100) * N / 75
+# delta = np.ones(1100) * N / 75
 
 # print (delta)
 def get_delta():
@@ -27,29 +27,25 @@ def get_delta():
                           skip_header=1, usecols=[3]) * N
 
     # print ("Y")
-    delta = np.append(delta, delta[-1] * np.ones(300))
+    delta = np.append(delta, delta[-1] * np.ones(3000))
     return delta
 
 
 # delta = get_delta()
 # mu = delta
-# delta = (1 / 75) * N  # Births Yearly
-# mu = delta  # * _O  # Death [] yearly
-
+death = 100
+delta = 1.0 ** np.arange(0, 1300, 1) * N / death# Births Yearly
+mu = delta  # * _O  # Death [] yearly
+print (mu)
 # Aging
 
 
 a_l = np.array((0, 2 / 12, 4 / 12, 6 / 12, 1,
                 7, 13, 20, 25, 45, 65))
 a_u = np.array((2 / 12, 4 / 12, 6 / 12, 1,
-                7, 13, 20, 25, 45, 65, 75))
-# a = N * np.array((1 / 6, 1 / 6, 1 / 6, 1 / 2, 6,
-#                   6, 7, 5, 5, 5,
-#                   5, 5, 10, 10))
-# a_u = a_u / 12
-# a_l = a_l / 12
+                7, 13, 20, 25, 45, 65, 100))
+
 a = N / (a_u - a_l)[:-1]
-# print (a, a.size, a_u.size)
 
 # Constant Params
 # ===============
@@ -57,20 +53,21 @@ a = N / (a_u - a_l)[:-1]
 
 # Efficacy and Waning
 # =====================
-# epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98)) # [3]
-epsilon_ap = np.ones(6) * 0
+# epsilon_ap = np.ones(6) * 1
+epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.6)) # [3]
 epsilon_wp = np.ones(4) * 1
 n_ap = epsilon_ap.size
-n_wp = epsilon_ap.size
+n_wp = epsilon_wp.size
 # Multiply the last value to create length of AGE
-epsilon_ap = np.concatenate((epsilon_ap, epsilon_ap[-1] * np.ones(J - 6)))
-epsilon_wp = np.concatenate([epsilon_wp, epsilon_wp[-1] * np.ones(J - 4)])
+epsilon_ap = np.concatenate((epsilon_ap, epsilon_ap[-1] * np.ones(J - n_ap)))
+epsilon_wp = np.concatenate([epsilon_wp, epsilon_wp[-1] * np.ones(J - n_wp)])
+# print (epsilon_ap)
 
 omega = (1 / 30) * N  # Loss of immunity [1] 3e-5 est yearly [3] 1/30 yearly
 omega_ap = (1 / 30) * N  # Waning
 omega_wp = (1 / 30) * N  # Waning
 
-gamma_s = (1 / 24)  # Healing rate Symptomatic [1] 1/6 [3] 1/25
+gamma_s = (1 / 30)  # Healing rate Symptomatic [1] 1/6 [3] 1/25
 gamma_a = (1 / 8)  # Healing rate Asymptomatic [1] 16 days [3] 8
 
 # Probabilities

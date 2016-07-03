@@ -8,11 +8,12 @@ from pertussis import *
 #     print (J)
 
 def hetro_model(INP, t,
-                o, p, f, zeta, d):
-    delta = d
-    mu = d
-
-    T = reduce_time(t, step=1 / N)
+                o, p, f, zeta, r_start):
+    # delta = d
+    # mu = d
+    # print ("_______MU: ", mu)
+    T = reduce_time(t, start=r_start ,step=1 / N)
+    t_max = max(0, int(T) - 1948)
 
     ## Compartments and Derivatives
     S, Vap, Vwp, Is, Ia, R = unpack(INP, *unpack_values)
@@ -23,23 +24,22 @@ def hetro_model(INP, t,
     ## Helpers and Pre-Calculations
     # TODO: lambda_a needs to be addressed from here
     I = Ia + Is  # Helper
-    beta_ = beta(T, o, p) * f
+    beta_ = (1 + beta(T, o, p) * f) * 0.001
+    # print (beta_.shape, IC.shape)
     IC = I.dot(C)
+    # lambda_ = beta_ * IC  # Needs to be normalized
     IsC = Is.dot(C)
     IaC = Ia.dot(C)
-    # print (beta_.shape, IC.shape)
-    lambda_ = beta_ * IC  # Needs to be normalized
-    # lambda_s = beta_ * IaC
-    # lambda_a = beta_ * IsC * zeta
-    # lambda_ = lambda_s + lambda_a
+    lambda_s = beta_ * IaC
+    lambda_a = beta_ * IsC * zeta * 3
+    lambda_ = lambda_s + lambda_a
     e_ap = 1 - epsilon_ap  # Helper
     e_wp = 1 - epsilon_wp  # Helper
-
     ## Equations
 
     # Susceptible
-    # print (int(T) - 1948)
-    dS[0] = delta[int(T) - 1948]  # IN: Birth rate
+    dS[0] = delta[t_max]  # IN: Birth rate
+    # print(T, int(T) - 1948,dS[0])
     dS += omega * R + omega_ap * Vap + omega_wp * Vwp  # IN: Waning from Natural and vaccine
     dS -= lambda_ * S  # OUT: Becoming infected
 
@@ -48,6 +48,7 @@ def hetro_model(INP, t,
         dS[1:] += S[:-1] * a  # IN
 
     if 2002 > T >= 1957:  # Begin wp
+        # print (T)
         dVwp[1:1 + n_wp] += S[:n_wp] * a[:n_wp]  # IN: Age and vaccinate wP from S classes
         dS[1 + n_wp:] += S[n_wp:-1] * a[n_wp:]  # IN: Age from previous age no vaccine
         pass
@@ -67,16 +68,16 @@ def hetro_model(INP, t,
 
     dIs = alpha_ap * infected_ap + alpha_wp * infected_wp  # IN: Infected with symptoms chance
     dIs -= gamma_s * Is  # OUT: Recovered
-    # dIs += M
+    dIs += M
 
     dIa = (1 - alpha_ap) * infected_ap + (1 - alpha_wp) * infected_wp  # IN: Infected with NO symptoms chance
     dIa -= gamma_a * Ia  # OUT: Recovered
-    # dIa += M
+    dIa += M
 
     # Recovered
     dR = gamma_s * Is + gamma_a * Ia  # IN: Recovered from I
     dR -= omega * R  # OUT: Natrual waning
-    # dR -= 2 * M
+    dR -= 2 * M
 
     ## Regular Aging
     # S
@@ -98,13 +99,14 @@ def hetro_model(INP, t,
     # Older people die more
     '''I fix the death rate so that old people die more ofern
     If this isn't adjusted to oldest age will explode. We manually fit this to data'''
-    mu = mu[int(T) - 1948]
+    mu_tmp = mu[t_max]
+    # print (mu_tmp)
     r = 0.7
-    mu_v = np.ones(J) * mu * r
-    mu_v[-1] += (1 - r) * mu * J
+    mu_v = np.ones(J) * mu_tmp * r
+    mu_v[-1] += (1 - r) * mu_tmp * J
     s = (mu_v * A).sum()
     # print ("S", s, mu, mu/s)
-    mu_v = np.tile(mu_v, 6) * mu / s
+    mu_v = np.tile(mu_v, 6) * mu_tmp / s
     Y -= mu_v * INP  # OUT: Death
     # print (Y)
     # Y[-1] -= delta[int(T) - 1948]

@@ -60,11 +60,6 @@ def draw_model(x, y, labels=None, split=None, collapse=False):
 
     return fig, axs
 
-# def draw_age_groups(x, y):
-#     fig, axs = plt.subplots(4, 4)
-#     axs = (np.hstack(axs))
-#     prin
-
 # MCMC
 def plot_stoch_vars(mcmc, which=None, exclude=None):
     # Plot the variables

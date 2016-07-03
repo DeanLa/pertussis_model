@@ -10,7 +10,9 @@ from time import clock, sleep
 from datetime import datetime as dt
 from pprint import pprint
 from pertussis import *
-# report_rate = np.ones(J) * 400 # Danny Cohen paper. pg3
+
+
+report_rate = np.ones(J) * 400 # Danny Cohen paper. pg3
 report_rate = np.append(np.ones(7) * 250, np.ones(4) * 1000)  # Danny Cohen paper. pg3
 data_years, years = cases_yearly()  # per 1e5
 data_years *= 400 / 1e5
@@ -28,57 +30,61 @@ real_cases = 1e5 * h * report_rate / (5970.6885 * 1e3 * dist98)  # per 1e5
 real_cases /= 1e5  # fraction
 
 # # Initial Parameters
-r_start = 1948
-r_end = 2050
+r_start = 1900
+r_end = 2150
 step = 1 / N
 t_end = expand_time(r_end, start=r_start, step=step)
 t_start = expand_time(r_start, start=r_start, step=step)
 
 t_range = np.arange(t_start, t_end, 1)
-
-death = 100
-# d = 1.0 ** np.arange(0, 300, 1) * N / death
-d = get_delta()
+print (t_range)
+# death = 100
+d = 1.0 ** np.arange(0, 1300, 1) * N / death
+# d = get_delta()
 cut98 = expand_time(1998, r_start)
 
 # Show mean values fit
-state_0 = collect_state0(S0=0.8, Is0=1e-3, death=100)
+state_0 = collect_state0(S0=0.2, Is0=1e-3, death=100)
 state_0 = pack_flat(state_0)
 
 _o = lambda f, s: np.ones(s) * f
 
-f1, f2, f3 = 1.1, 1, 0.1
+f1, f2, f3 = 20, 1, 0.1
 s1, s2 = 4, 3
 s3 = J - s1 - s2
 f = np.concatenate([_o(f1, s1), _o(f2, s2), _o(f3, s3)])
 # Run ODEs
 clk = clock()
 RES = odeint(hetro_model, state_0, t_range,
-             args=(4, 2, f, 1, d))
+             args=(4, 2, f, 1, r_start))
 print (clock() - clk)
 
 
 # Prepare results
 x = reduce_time(t_range, start=r_start, step=step)
 y = unpack(RES.T, *unpack_values)
+y_age = sum([a for a in y]).T # By Age
+
 h = sum([i for i in y[:3]])  # H = S + Va + Vw
 all_compartments = sum([i for i in y])
 y.append(h)
 y.append(all_compartments)  # y = S, Va, Vw, Is, Ia, R, H, ALL
 
-# Sum by Age
-y_age = sum([a for a in y]).T
 
+# PLOT
+fig2, ax2 = draw_model(x, y[0:3], ["S","Va","Vw"], split=None, collapse=False)
 
-# In[6]:
-
-fig, ax = draw_model(x, y[3:], ["Infected Is", "Infected Ia", "Recovered", "Healthy", "All"], split=0, collapse=True)
+# plt.plot(x, y_age)
+yi = (y[3]+y[4]).T.sum(axis=1)
+fig3, ax3 = plt.subplots(figsize=(11,7))
+ax3.plot(x,yi)
+fig, ax = draw_model(x, y[3:], ["Infected s", "Infected a", "Recovered", "Healthy", "All"], split=0, collapse=True)
+# fig, ax = draw_model(x, y[3:-2], ["Infected s", "Infected a", "Recovered"], split=0, collapse=False)
 plt.tight_layout()
-ax[0].scatter(years, data_years)
+ax[0].scatter(years, data_years/12)
 ax[0].scatter(months, data_months, c='green')
-ax[0].set_xlim(1948, 2015)
-ax[0].set_ylim(0, 0.05)
+# ax[0].set_xlim(1948, 2015)
+# ax[0].set_ylim(0, 0.005)
 
-fig2, ax2 = draw_model(x, y[0:3], ["S","Va","Vw"], split=0, collapse=True)
 
 plt.show()
