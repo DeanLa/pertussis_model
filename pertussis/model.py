@@ -9,11 +9,9 @@ from pertussis import *
 
 def hetro_model(INP, t,
                 o, p, f, zeta, r_start):
-    # delta = d
-    # mu = d
-    # print ("_______MU: ", mu)
-    T = reduce_time(t, start=r_start ,step=1 / N)
-    t_max = max(0, int(T) - 1948)
+    # delta = mu = nums(N / death,1000) # Constant Birthing - checking purposes
+    T = reduce_time(t, start=r_start, step=1 / N)
+    t_max = max(0, int(T) - 1948)  # 1948 is hard coded as this is where the data begins
 
     ## Compartments and Derivatives
     S, Vap, Vwp, Is, Ia, R = unpack(INP, *unpack_values)
@@ -24,14 +22,14 @@ def hetro_model(INP, t,
     ## Helpers and Pre-Calculations
     # TODO: lambda_a needs to be addressed from here
     I = Ia + Is  # Helper
-    beta_ = (1 + beta(T, o, p) * f) * 0.001
+    beta_ = (1 + beta(T, o, p) * f) * 0.01
     # print (beta_.shape, IC.shape)
     IC = I.dot(C)
     # lambda_ = beta_ * IC  # Needs to be normalized
     IsC = Is.dot(C)
     IaC = Ia.dot(C)
     lambda_s = beta_ * IaC
-    lambda_a = beta_ * IsC * zeta * 3
+    lambda_a = beta_ * IsC * zeta
     lambda_ = lambda_s + lambda_a
     e_ap = 1 - epsilon_ap  # Helper
     e_wp = 1 - epsilon_wp  # Helper
@@ -57,6 +55,8 @@ def hetro_model(INP, t,
         dS[1 + n_ap:] += S[n_ap:-1] * a[n_ap:]  # #IN: Age from previous age no vaccine
 
     # dS[1:] += S[:-1] * a  # IN
+    # COUNTER of new cases
+
     dVap -= lambda_ * e_ap * Vap  # OUT: Getting sick (reduced by efficacy)
     dVwp -= lambda_ * e_wp * Vwp  # OUT: Getting sick (reduced by efficacy)
     dVap -= Vap * omega_ap  # OUT: Waning
@@ -64,7 +64,7 @@ def hetro_model(INP, t,
 
     # Infected
     infected_ap = lambda_ * e_ap * Vap  # HELPER: Infected with ap
-    infected_wp = lambda_ * e_wp * Vwp + lambda_ * S  # HELPER: Infected with wp or no vaccine
+    infected_wp = lambda_ * (e_wp * Vwp + S)  # HELPER: Infected with wp or no vaccine
 
     dIs = alpha_ap * infected_ap + alpha_wp * infected_wp  # IN: Infected with symptoms chance
     dIs -= gamma_s * Is  # OUT: Recovered
@@ -97,20 +97,48 @@ def hetro_model(INP, t,
     ## Housekeeping
     Y = pack_flat((dS, dVap, dVwp, dIs, dIa, dR))
     # Older people die more
-    '''I fix the death rate so that old people die more ofern
-    If this isn't adjusted to oldest age will explode. We manually fit this to data'''
+    '''I fix the death rate so that old people die more often
+    If this isn't adjusted to oldest age will explode. We manually fit this to data
+    This part in the equation can be expanded in a paper'''
     mu_tmp = mu[t_max]
     # print (mu_tmp)
     r = 0.7
     mu_v = np.ones(J) * mu_tmp * r
     mu_v[-1] += (1 - r) * mu_tmp * J
     s = (mu_v * A).sum()
-    # print ("S", s, mu, mu/s)
+    # print("S", s)
+    # print ("mu_v", mu_v,"\n\n", mu_v / s)
+    # return
     mu_v = np.tile(mu_v, 6) * mu_tmp / s
+    # print (mu_v*365)
+    # return
     Y -= mu_v * INP  # OUT: Death
     # print (Y)
     # Y[-1] -= delta[int(T) - 1948]
     return Y
+
+
+def new_cases(x, S, Vap, Vwp, Is, Ia, f, zeta, o=4, p=2):
+    def new(x, S, Vap, Vwp, Is, Ia):
+        e_ap = 1 - epsilon_ap  # Helper
+        e_wp = 1 - epsilon_wp  # Helper
+        beta_ = (1 + beta(x, o, p) * f) * 0.01
+        IsC = Is.dot(C)
+        IaC = Ia.dot(C)
+        lambda_s = beta_ * IaC
+        lambda_a = beta_ * IsC * zeta
+        lambda_ = lambda_s + lambda_a
+        infected_ap = lambda_ * e_ap * Vap  # HELPER: Infected with ap
+        infected_wp = lambda_ * e_wp * Vwp + lambda_ * S  # HELPER: Infected with wp or no vaccine
+        d_new = alpha_ap * infected_ap + alpha_wp * infected_wp
+        return d_new
+
+    res = np.zeros((J, x.size))
+    for i in range(x.size):
+        # print (i,"----")
+        res[:,i] = new(x[i], S[:, i], Vap[:, i], Vwp[:, i], Is[:, i], Ia[:, i])#.sum()
+
+    return res
 
 
 def hetro_model_relative(INP, t,

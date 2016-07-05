@@ -31,12 +31,11 @@ def get_delta():
     return delta
 
 
-# delta = get_delta()
-# mu = delta
 death = 100
-delta = 1.0 ** np.arange(0, 1300, 1) * N / death# Births Yearly
+delta = get_delta()
+
 mu = delta  # * _O  # Death [] yearly
-print (mu)
+# print (mu)
 # Aging
 
 
@@ -75,7 +74,7 @@ alpha_ap = 0.5  # Chance to be symptomatic from aP
 alpha_wp = 1  # Chance to be symptomatic from wP
 
 
-def collect_state0(S0=0.2, Is0=1e-3, death=75):
+def collect_state0(S0=0.2, Is0=1e-3, death=death):
     # _pop = _O / J
     # _pop = np.append(a, death - 65)# / death
     _pop = (a_u - a_l)[:-1]

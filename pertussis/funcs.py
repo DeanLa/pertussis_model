@@ -80,6 +80,12 @@ def reduce_year(vec):
     # print
     return vec.sum(axis=1)
 
+def nums(scalar, amount):
+    return np.ones(amount) * scalar
+
 def mse(x,y):
     res = (x-y)**2
     return res.mean()
+
+def new_sick(vec):
+    pass

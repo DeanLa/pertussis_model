@@ -33,6 +33,7 @@ def cases_monthly(path='./data/_imoh/cases.csv'):
         pop = pd.read_csv('./data/demographics/birth_rate.csv')
     except:
         print("Can't find path to population by years")
+        return
     pop['Y'] = pop['year']
     pop = pop[['Y', 'population']]
     pop.set_index('Y', inplace=True)
