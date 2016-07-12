@@ -53,8 +53,8 @@ a = N / (a_u - a_l)[:-1]
 # Efficacy and Waning
 # =====================
 # epsilon_ap = np.ones(6) * 1
-epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.6)) # [3]
-epsilon_wp = np.ones(4) * 1
+epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98)) # [3]
+epsilon_wp = np.ones(4) * 0.99
 n_ap = epsilon_ap.size
 n_wp = epsilon_wp.size
 # Multiply the last value to create length of AGE

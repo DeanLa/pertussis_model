@@ -1,6 +1,6 @@
 from pertussis import *
-
-
+import pymc as pm
+from pprint import pprint
 #
 # def test_model():
 #     del (J)
@@ -117,7 +117,6 @@ def hetro_model(INP, t,
     # Y[-1] -= delta[int(T) - 1948]
     return Y
 
-
 def new_cases(x, S, Vap, Vwp, Is, Ia, f, zeta, o=4, p=2):
     def new(x, S, Vap, Vwp, Is, Ia):
         e_ap = 1 - epsilon_ap  # Helper
@@ -129,14 +128,12 @@ def new_cases(x, S, Vap, Vwp, Is, Ia, f, zeta, o=4, p=2):
         lambda_a = beta_ * IsC * zeta
         lambda_ = lambda_s + lambda_a
         infected_ap = lambda_ * e_ap * Vap  # HELPER: Infected with ap
-        infected_wp = lambda_ * e_wp * Vwp + lambda_ * S  # HELPER: Infected with wp or no vaccine
+        infected_wp = lambda_ * (e_wp * Vwp + S)  # HELPER: Infected with wp or no vaccine
         d_new = alpha_ap * infected_ap + alpha_wp * infected_wp
         return d_new
-
     res = np.zeros((J, x.size))
     for i in range(x.size):
-        # print (i,"----")
-        res[:,i] = new(x[i], S[:, i], Vap[:, i], Vwp[:, i], Is[:, i], Ia[:, i])#.sum()
+        res[:, i] = new(x[i], S[:, i], Vap[:, i], Vwp[:, i], Is[:, i], Ia[:, i])  # .sum()
 
     return res
 

@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-
+from pertussis import *
 
 def get_dist_98():
     return np.array([0.003854352, 0.003854352, 0.003854352,
@@ -47,5 +47,15 @@ def cases_monthly(path='./data/_imoh/cases.csv'):
     return data.values, months
 
 
-def total_sick(path='./data/_imoh/cases.csv'):
-    df = pd.read_csv
+def cases_month_age(path='./data/_imoh/cases.csv'):
+    df = pd.read_csv(path, ).fillna(-1000)
+    xp100 = pd.read_csv('./data/demographics/pop_by_year_1998_2014.csv')
+    x = df.merge(xp100, on="Y")
+    x['YM'] = x.Y + (x.M - 1) / 12
+    # print (x.T)
+    x['W'] = 1e-3 * ((x.Age < 20) * 400 + (x.Age >= 20) * 250) / x.population
+    bins_ages = np.append(a_l, 120)
+    bins_time = np.arange(1998, 2014.01, 1 / 12)
+    h = np.histogram2d(x.Age, x.YM, bins=[bins_ages, bins_time], weights=x.W)
+
+    return h[0]

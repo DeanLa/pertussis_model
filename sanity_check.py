@@ -50,11 +50,12 @@ f = np.concatenate([nums(f1, s1), nums(f2, s2), nums(f3, s3)])
 o=4
 p=2
 z=1
+vars = locals()
 # Run ODEs ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 clk = clock()
 RES = odeint(hetro_model, state_0, t_range,
              args=(o, p, f, z, r_start))
-print (clock() - clk)
+print ("ODE: ",clock() - clk)
 
 
 # Prepare results
@@ -69,34 +70,39 @@ h = sum([i for i in y[:3]])  # H = S + Va + Vw
 all_compartments = sum([i for i in y])
 y.append(h)
 y.append(all_compartments)  # y = S, Va, Vw, Is, Ia, R, H, ALL
-
-
-# PLOT
-# Healthy cases
-fig2, ax2 = draw_model(x, y[0:3], ["S","Va","Vw"], split=None, collapse=False)
-
-# Age demographics
-# plt.plot(x, y_age)
-
-# Infected
-yi = (y[3]+y[4]).T.sum(axis=1)
-fig3, ax3 = plt.subplots(figsize=(11,7))
-# ax3.plot(x,yi)
-ax3.plot(x,y_new.sum(axis=0),'b--', label= "New Cases")
-ax3.plot(x,yi,'r--', label="Infected")
-ax3.scatter(years, data_years/12)
-ax3.scatter(months, data_months, c='green')
-ax3.legend()
-
-# Compartments
-fig, ax = draw_model(x, y[3:], ["Infected s", "Infected a", "Recovered", "Healthy", "All"], split=0, collapse=True)
-plt.tight_layout()
-ax[0].scatter(years, data_years/12)
-ax[0].scatter(months, data_months, c='green')
-# ax[0].set_xlim(1948, 2015)
-ax[0].set_ylim(0, 0.005)
-
-
-
-
-plt.show()
+clk=clock()
+write_report(vars, x=x, y=y)
+print ("Report: ", clock()-clk)
+# print (y_new)
+# print (y_new.shape)
+# print (reduce_year(y_new))
+# print (reduce_year(y_new).shape)
+# # PLOT
+# # Healthy cases
+# fig2, ax2 = draw_model(x, y[0:3], ["S","Va","Vw"], split=None, collapse=False)
+#
+# # Age demographics
+# # plt.plot(x, y_age)
+#
+# # Infected
+# yi = (y[3]+y[4]).T.sum(axis=1)
+# fig3, ax3 = plt.subplots(figsize=(11,7))
+# # ax3.plot(x,yi)
+# ax3.plot(x,y_new.sum(axis=0),'b--', label= "New Cases")
+# ax3.plot(x,yi,'r--', label="Infected")
+# ax3.scatter(years, data_years/12)
+# ax3.scatter(months, data_months, c='green')
+# ax3.legend()
+#
+# # Compartments
+# fig, ax = draw_model(x, y[3:], ["Infected s", "Infected a", "Recovered", "Healthy", "All"], split=0, collapse=True)
+# plt.tight_layout()
+# ax[0].scatter(years, data_years/12)
+# ax[0].scatter(months, data_months, c='green')
+# # ax[0].set_xlim(1948, 2015)
+# ax[0].set_ylim(0, 0.005)
+#
+# # fig5, ax5 = draw_model(x, [y_new], "NEW CASES")
+#
+#
+# plt.show()

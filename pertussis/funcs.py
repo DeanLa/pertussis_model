@@ -2,13 +2,17 @@ import numpy as np
 from numpy import cos, pi
 from itertools import chain
 
+
 def check(x=2):
     print("T")
     print(x)
 
 
 def beta(t, omega, phi):
-    return (1 + cos((2 * pi) * (phi / omega + t / omega)))
+    if t >= 1948:
+        return (1 + cos((2 * pi) * (phi / omega + t / omega)))
+    else:
+        return 1
 
 
 def pack_flat(Y):
@@ -59,33 +63,39 @@ def reduce_month(vec):
     months = (31, 28, 31, 30,
               31, 30, 31, 31,
               30, 31, 30, 31)
-
-    # def my_reduce(vec):
-
-    l = vec.size
-    assert l % 365 == 0, "Vector must divide with 365"
-    months = np.tile(months, int(l / 365))
-    months = np.cumsum(months)
-    res = np.split(vec, months[:-1])
-    res = np.array([a.sum() for a in res])
-    return res
+    if vec.ndim == 1:
+        l = vec.size
+        assert l % 365 == 0, "Vector must divide with 365"
+        months = np.tile(months, l // 365)
+        months = np.cumsum(months)
+        res = np.split(vec, months[:-1])
+        res = np.array([a.sum() for a in res])
+        return res
+    if vec.ndim == 2:
+        return np.apply_along_axis(reduce_month, 1, vec)
 
 
 def reduce_year(vec):
     '''Takes daily results from model and gives sum by years(365 days in a year)'''
-    l = vec.size
-    assert l % 365 == 0, "Vector must divide with 365, but has {} values".format(vec.shape)
-    vec = vec.reshape(l // 365, 365)
-    # np.apply_along_axis(unpack, 1, vec, months)
-    # print
-    return vec.sum(axis=1)
+    if vec.ndim == 1:
+        l = vec.size
+        assert l % 365 == 0, "Vector must divide with 365, but has {} values".format(vec.shape)
+        years = np.cumsum(np.tile(365, l // 365))
+        res = np.split(vec, years[:-1])
+        res = np.array([a.sum() for a in res])
+        return res
+    if vec.ndim == 2:
+        return np.apply_along_axis(reduce_year, 1, vec)
+
 
 def nums(scalar, amount):
     return np.ones(amount) * scalar
 
-def mse(x,y):
-    res = (x-y)**2
+
+def mse(x, y):
+    res = (x - y) ** 2
     return res.mean()
+
 
 def new_sick(vec):
     pass

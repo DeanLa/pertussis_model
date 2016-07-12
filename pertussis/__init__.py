@@ -3,3 +3,4 @@ from .parameters import *
 from .data import * #Requires Parameters
 from .model import * # Requires Parameters
 from .charts import *
+from .report import *
