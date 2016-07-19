@@ -1,6 +1,8 @@
 z_*
 MCMC.txt/
 data/_imoh/
+output/
+img/
 *.png
 
 # Byte-compiled / optimized / DLL files

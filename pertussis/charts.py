@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import pymc as pm
+import numpy as np
+from pertussis import a_l, a_u, J
 plt.style.use('ggplot')
 
 def draw_no_split(x, y):
@@ -112,4 +114,17 @@ def plot_stoch_vars(mcmc, which=None, exclude=None):
             print(str(tr), " excluded")
     # fig.set_tight_layout
     fig.suptitle("Posterior Distribution <|> Convergence")
+    return fig, axs
+
+def mu_chart(mu, data):
+    n_months = mu.shape[1]
+    x = 1998 + np.arange(0,n_months,1) / 12
+    fig, axs = plt.subplots(4, 3, figsize=(16, 16))
+    axs = np.hstack(axs)
+    for i in range(J):
+        axs[i].plot(x, mu[i, :], label='Model')
+        axs[i].plot(x, data[i, :], '--', label="Data")
+        axs[i].set_title('Age: {:.2f} - {:.2f}'.format(a_l[i], a_u[i]))
+        axs[i].legend()
+
     return fig, axs
