@@ -53,7 +53,8 @@ def cases_month_age(path='./data/_imoh/cases.csv'):
     x = df.merge(xp100, on="Y")
     x['YM'] = x.Y + (x.M - 1) / 12
     # print (x.T)
-    x['W'] = 1e-3 * ((x.Age < 20) * 400 + (x.Age >= 20) * 250) / x.population
+    # x['W'] = 1e-3 * ((x.Age < 20) * young_factor + (x.Age >= 20) * old_factor) / x.population # Weights
+    x['W'] = 1e-3 * 1 / x.population # Weights
     bins_ages = np.append(a_l, 120)
     bins_time = np.arange(1998, 2014.01, 1 / 12)
     h = np.histogram2d(x.Age, x.YM, bins=[bins_ages, bins_time], weights=x.W)

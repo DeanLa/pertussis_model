@@ -2,7 +2,9 @@ import matplotlib.pyplot as plt
 import pymc as pm
 import numpy as np
 from pertussis import a_l, a_u, J
+
 plt.style.use('ggplot')
+
 
 def draw_no_split(x, y):
     # l = y.shape[1]
@@ -40,27 +42,28 @@ def draw_model(x, y, labels=None, split=None, collapse=False):
         try:
             ax = axs[i]
         except:
-            ax=axs
-        z = y[i][:,:]
+            ax = axs
+        z = y[i][:, :]
         if collapse:
-            z=z.sum(axis=0)
+            z = z.sum(axis=0)
         lines = ax.plot(x, z.T, lw=1.3)
         try:
             ax.set_title(labels[i])
         except:
             ax.set_title("")
-        ub = max(0.00001,z.max() * 1.05)
+        ub = max(0.00001, z.max() * 1.05)
         # ub = 1
-        ax.set_ylim([0,ub])
+        ax.set_ylim([0, ub])
         # ax.set_xlim(left=1948)#, right = 2010)
         ax.plot([1957, 1957], [0, ub], "k--")
         ax.plot([2002, 2002], [0, ub], "k--")
         if l <= 3:
-            ax.legend(lines, [j+1 for j in range(len(lines))], loc='lower left')
+            ax.legend(lines, [j + 1 for j in range(len(lines))], loc='lower left')
     if split:
-        axs[split].legend(lines, [j+1 for j in range(len(lines))], loc='lower left')
+        axs[split].legend(lines, [j + 1 for j in range(len(lines))], loc='lower left')
 
     return fig, axs
+
 
 # MCMC
 def plot_stoch_vars(mcmc, which=None, exclude=None):
@@ -116,15 +119,21 @@ def plot_stoch_vars(mcmc, which=None, exclude=None):
     fig.suptitle("Posterior Distribution <|> Convergence")
     return fig, axs
 
+
 def mu_chart(mu, data):
-    n_months = mu.shape[1]
-    x = 1998 + np.arange(0,n_months,1) / 12
+    from scipy.stats.mstats import mquantiles
+    n_months = mu.shape[-1]
+    x = 1998 + np.arange(0, n_months, 1) / 12
     fig, axs = plt.subplots(4, 3, figsize=(16, 16))
     axs = np.hstack(axs)
     for i in range(J):
-        axs[i].plot(x, mu[i, :], label='Model')
-        axs[i].plot(x, data[i, :], '--', label="Data")
-        axs[i].set_title('Age: {:.2f} - {:.2f}'.format(a_l[i], a_u[i]))
-        axs[i].legend()
+        ax = axs[i]
+        q_mu = mu[:, i, :]
+        quants = mquantiles(q_mu, prob=[0.05, 0.95], axis=0)
+        ax.fill_between(x, quants[0], quants[1], color='red', alpha=0.3, label="95% CI")
+        ax.plot(x, q_mu.mean(axis=0), label='Model')
+        ax.plot(x, data[i, :], '--', label="Data")
+        ax.set_title('Age: {:.2f} - {:.2f}'.format(a_l[i], a_u[i]))
+    axs[0].legend(loc='best')
 
     return fig, axs

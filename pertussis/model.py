@@ -8,7 +8,7 @@ from pprint import pprint
 #     print (J)
 
 def hetro_model(INP, t,
-                o, p, f, zeta, r_start):
+                o, p, f, r_start):
     # delta = mu = nums(N / death,1000) # Constant Birthing - checking purposes
     T = reduce_time(t, start=r_start, step=1 / N)
     t_max = max(0, int(T) - 1948)  # 1948 is hard coded as this is where the data begins
@@ -19,20 +19,18 @@ def hetro_model(INP, t,
     # print (A)
     dS, dVap, dVwp, dIs, dIa, dR = (np.zeros(uv) for uv in unpack_values)  # Zeros by size
 
-    ## Helpers and Pre-Calculations
-    # TODO: lambda_a needs to be addressed from here
     I = Ia + Is  # Helper
     beta_ = (1 + beta(T, o, p) * f) * 0.01
     # print (beta_.shape, IC.shape)
     IC = I.dot(C)
-    # lambda_ = beta_ * IC  # Needs to be normalized
-    IsC = Is.dot(C)
-    IaC = Ia.dot(C)
-    lambda_s = beta_ * IaC
-    lambda_a = beta_ * IsC * zeta
-    lambda_ = lambda_s + lambda_a
-    e_ap = 1 - epsilon_ap  # Helper
-    e_wp = 1 - epsilon_wp  # Helper
+    lambda_ = beta_ * IC  # Needs to be normalized
+    # IsC = Is.dot(C)
+    # IaC = Ia.dot(C)
+    # lambda_s = beta_ * IaC
+    # lambda_a = beta_ * IsC
+    # lambda_ = lambda_s + lambda_a
+    e_ap = alpha_ap * (1 - epsilon_ap)  # Helper
+    e_wp = alpha_wp * (1 - epsilon_wp)  # Helper
     ## Equations
 
     # Susceptible
@@ -117,15 +115,15 @@ def hetro_model(INP, t,
     # Y[-1] -= delta[int(T) - 1948]
     return Y
 
-def new_cases(x, S, Vap, Vwp, Is, Ia, f, zeta, o=4, p=2):
+def new_cases(x, S, Vap, Vwp, Is, Ia, f, omega=4, phi=2):
     def new(x, S, Vap, Vwp, Is, Ia):
         e_ap = 1 - epsilon_ap  # Helper
         e_wp = 1 - epsilon_wp  # Helper
-        beta_ = (1 + beta(x, o, p) * f) * 0.01
+        beta_ = (1 + beta(x, omega, phi) * f) * 0.01
         IsC = Is.dot(C)
         IaC = Ia.dot(C)
         lambda_s = beta_ * IaC
-        lambda_a = beta_ * IsC * zeta
+        lambda_a = beta_ * IsC
         lambda_ = lambda_s + lambda_a
         infected_ap = lambda_ * e_ap * Vap  # HELPER: Infected with ap
         infected_wp = lambda_ * (e_wp * Vwp + S)  # HELPER: Infected with wp or no vaccine

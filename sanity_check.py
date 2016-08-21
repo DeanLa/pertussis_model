@@ -60,7 +60,7 @@ print("ODE: ", clock() - clk)
 x = reduce_time(t_range, start=r_start, step=step)
 y = unpack(RES.T, *unpack_values)
 clk = clock()
-y_new = new_cases(x, y[0], y[1], y[2], y[3], y[4], f=f, zeta=z, o=o, p=p)
+y_new = new_cases(x, y[0], y[1], y[2], y[3], y[4], f=f, zeta=z, omega=o, phi=p)
 print("y_new ", clock() - clk)
 y_age = sum([a for a in y]).T  # By Age
 

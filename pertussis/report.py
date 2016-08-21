@@ -7,7 +7,9 @@ import webbrowser
 def write_report(vars, x, y, figs, mcmc=None):
     # Table of vars
     rows = ""
+    scenarios = ""
     persist = ['a_l', 'a_u', 'f', 'epsilon_ap', 'epsilon_wp']
+    scenario_list = ['alpha_ap', 'alpha_wp', 'omega_ap', 'omega_wp']
     for k, v in sorted(vars.items()):
         if type(v) in [int, str, float] and k[:2] != "__" or k in persist:
             # if type(v) not in ['function'] and k[:2] != "__":
@@ -16,10 +18,12 @@ def write_report(vars, x, y, figs, mcmc=None):
             </tr>'''.format(k, v, str(type(v))[1:-1])
             # print(row)
             rows += row
+            if k in scenario_list:
+                scenarios+=row
     table = '''<table>
                 <tr><th>Variable</th><th>Value</th><th>Type</th>
                 {}
-            </table>'''.format(rows)
+            </table>'''
 
     # Create dir
     _now = str(dt.now()).replace(':', '').replace("-", "").replace(" ", "_")[:-7]
@@ -51,17 +55,21 @@ def write_report(vars, x, y, figs, mcmc=None):
         border: 1px solid black
     }}
     </style>
-    <title>
-    </title>
+    <title>Report {current_time}</title>
     <body>
         {table}
-        {mcmc_traces}
+        <p><b> Traces: {mcmc_traces} </b></p>
+        <p>Scenario
+        {scenario}
+        </p>
         <br/>
         {charts}
     </body>
-    </html>'''.format(table=table,
-                      mcmc_traces='',
-                      charts=charts)
+    </html>'''.format(table=table.format(rows),
+                      mcmc_traces=mcmc.trace('omega')[:].shape[0],
+                      scenario=table.format(scenarios),
+                      charts=charts,
+                      current_time=_now)
 
     # Save files
     with open(path + "/index.html", 'w') as page:

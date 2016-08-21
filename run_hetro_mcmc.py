@@ -11,8 +11,8 @@ from copy import copy
 from pertussis import *
 
 # J = 12
-print (J)
-# # Initial
+# print(J)
+# Initial
 r_start = 1920
 r_end = 2015
 step = 1 / N
@@ -20,6 +20,7 @@ t_end = expand_time(r_end, start=r_start, step=step)
 t_start = expand_time(r_start, start=r_start, step=step)
 t_range = np.arange(t_start, t_end, 1)
 vars = copy(locals())
+times = []
 # Data
 report_rate = np.append(nums(250, 7), nums(400, J - 7))  # Danny Cohen paper. pg3
 data_years, years = cases_yearly()  # per 1e5
@@ -38,15 +39,14 @@ state_0 = pack_flat(state_0)
 
 # Priors
 
-o = pm.Uniform('omega', 3, 6)
-p = pm.Uniform('phi', 0, o + 0.1)
-# o = 4
-# p = 2
+omega = pm.Uniform('omega', 3, 6)
+phi = pm.Uniform('phi', 0, omega + 0.1)
 f_top = 25
 f1 = pm.Uniform('f1', 0, f_top)
 f2 = pm.Uniform('f2', 0, f_top)
 f3 = pm.Uniform('f3', 0, f_top)
-z = pm.Uniform('zeta', 0, 4)
+
+p = pm.Uniform('p', 1 / 400, 1 / 60)
 
 
 @pm.deterministic
@@ -56,14 +56,11 @@ def f(f1=f1, f2=f2, f3=f3):
     return np.concatenate((nums(f1, s1), nums(f2, s2), nums(f3, s3)))
 
 
-times = []
-
-
-@pm.deterministic
-def sim(o=4, p=2, f=f, z=z):
+@pm.deterministic(trace=False)
+def sim(omega=omega, phi=phi, f=f):
     clk = clock()
     res = odeint(hetro_model, pack_flat(state_0), t_range,
-                 args=(o, p, f, z, r_start))
+                 args=(omega, phi, f, r_start))
 
     res = unpack(res.T, *unpack_values)
     print(clock() - clk)
@@ -72,51 +69,42 @@ def sim(o=4, p=2, f=f, z=z):
 
 
 @pm.deterministic
-def mu1(sim=sim, o=o, p=p, f=f, z=z):
+def mu(sim=sim, omega=omega, phi=phi, f=f):
     x = reduce_time(t_range, start=r_start, step=step)
-    y = new_cases(x, sim[0], sim[1], sim[2], sim[3], sim[4], f=f, zeta=z, o=o, p=o)
+    y = new_cases(x, sim[0], sim[1], sim[2], sim[3], sim[4], f=f, omega=omega, phi=phi)
     start_ix = (1998 - r_start) * 12
     end_ix = (2014 - r_start) * 12
     # print (end_ix - start_ix)
-    res = reduce_month(y)[:,start_ix:end_ix]
+    res = reduce_month(y)[:, start_ix:end_ix]
     return res
 
 
-# def mu2(sim=sim):
-#     ...
+# Y = pm.Normal('Y', mu=mu1, tau=1 / sigma1 ** 2, observed=True, value=data)
+Y = pm.Binomial('Y', n=mu, p=p, observed=True, value=data)
 
-# TODO: Two sigmas
-sigma1 = pm.Uniform('sigma1', 0, 0.5)
-# sigma2 = pm.Uniform('sigma2', 0, sigma1/12)
-# p = pm.Uniform('p', 0.002, 0.02)
-
-Y1 = pm.Normal('Y1', mu=mu1, tau=1 / sigma1 ** 2, observed=True, value=data)
-# Y2 = pm.Normal('Y2', mu=mu2, tau=1 / sigma2 ** 2, observed=True, value=data_monthly)
-
-# TODO: Set weights
-
-# model = pm.Model([Y1, o, p, sim, f, f1, f2, f3, mu1, sigma1, s0, i0, state_0, z])
-model = pm.Model([Y1, sim, f, mu1, sigma1, o, p, z, f1, f2, f3, ])
-# model = pm.Model([Y1, sim, f, mu1, sigma1, z, f1, f2, f3])
 # TODO: Other Backend
+model = pm.Model([Y, sim, f, mu, omega, phi, f1, f2, f3, ])
 mcmc = pm.MCMC(model, db="ram")
-mcmc.sample(iter=2, burn=0)  #######################################################################################
-times = np.array(times)
+gclk = clock()
+mcmc.sample(iter=10, burn=0)  #######################################################################################
+print ("Global Time ",clock()-gclk)
+
+# times = np.array(times)
 # print(times.min(), times.mean(), times.max())
+
+# Traces
 t_tally = 0
 m_f = mcmc.trace('f')[t_tally:].mean(axis=0)
-# print ("ATTENTION: ", m_f)
-m_o = mcmc.trace('omega')[t_tally:].mean()
-m_p = mcmc.trace('phi')[t_tally:].mean()
-# m_o = 4
-# m_p = 2
-m_z = mcmc.trace('zeta')[t_tally:].mean()
-m_mu = mcmc.trace('mu1', chain=None)[:].mean(axis=0)
+m_omega = mcmc.trace('omega')[t_tally:].mean()
+m_phi = mcmc.trace('phi')[t_tally:].mean()
+tr_mu = mcmc.trace('mu', chain=None)[:]
+m_mu = tr_mu.mean(axis=0)
+m_p = mcmc.trace('p', chain=None)[:].mean(axis=0)
 
 # Show mean values fit
 clk = clock()
 RES = odeint(hetro_model, state_0, t_range,
-             args=(m_o, m_p, m_f, m_z, r_start))
+             args=(m_omega, m_phi, m_f, r_start))
 print(clock() - clk)
 # # Results
 x = reduce_time(t_range, start=r_start, step=step)
@@ -126,22 +114,21 @@ all = sum([i for i in y])
 y.append(h)
 y.append(all)
 
-
 # PLOT
 figs = []
-fig, axs = mu_chart(m_mu, data)
+fig, axs = mu_chart(tr_mu * m_p, data)
 figs.append(fig)
 
-fig1, ax1 = draw_model(x, y[3:], ["Infected Is", "Infected Ia", "Recovered", "Healthy", "All"], split=0, collapse=False)
+fig1, ax1 = draw_model(x, y[3:], ["Infected Is", "Infected Ia", "Recovered", "Healthy", "All"], split=0, collapse=True)
 figs.append(fig1)
 
-fig2, ax2 = draw_model(x, y[0:3], ["Susceptible", "Vaccinated ap", "Vaccinated wp"], split=False, collapse=False)
+fig2, ax2 = draw_model(x, y[0:3], ["Susceptible", "Vaccinated ap", "Vaccinated wp"], split=False, collapse=True)
 figs.append(fig2)
 
 fig3, ax3 = draw_model(x, y[3:], ["Infected Is", "Infected Ia", "Recovered", "Healthy", "All"], split=0, collapse=True)
 ax3[0].scatter(years, data_years / 12)
 ax3[0].scatter(months, data_months, c='green')
-ax3[0].set_xlim([2000,2015])
+ax3[0].set_xlim([2000, 2015])
 ax3[0].set_ylim(0, 0.05)
 figs.append(fig3)
 
