@@ -38,7 +38,8 @@ state_0 = pack_flat(state_0)
 #######################
 
 # Priors
-
+s1, s2 = 4, 3
+s3 = J - s1 - s2
 omega = pm.Uniform('omega', 3, 6)
 phi = pm.Uniform('phi', 0, omega + 0.1)
 f_top = 25
@@ -54,22 +55,33 @@ def f(f1=f1, f2=f2, f3=f3):
     s1, s2 = 4, 3
     s3 = J - s1 - s2
     return np.concatenate((nums(f1, s1), nums(f2, s2), nums(f3, s3)))
+# f = np.concatenate((nums(f1, s1), nums(f2, s2), nums(f3, s3)))
+
+# @pm.deterministic(trace=False)
+# def sim(omega=omega, phi=phi, f=f):
+#     clk = clock()
+#     res = odeint(hetro_model, pack_flat(state_0), t_range,
+#                  args=(omega, phi, f, r_start))
+#
+#     res = unpack(res.T, *unpack_values)
+#     print(clock() - clk)
+#     times.append(clock() - clk)
+#     return res
 
 
-@pm.deterministic(trace=False)
-def sim(omega=omega, phi=phi, f=f):
+# def mu(sim=sim, omega=omega, phi=phi, f=f):
+@pm.deterministic
+def mu(omega=omega, phi=phi, f=f):
+    # Run simulation
     clk = clock()
-    res = odeint(hetro_model, pack_flat(state_0), t_range,
+    sim = odeint(hetro_model, pack_flat(state_0), t_range,
                  args=(omega, phi, f, r_start))
 
-    res = unpack(res.T, *unpack_values)
+    sim = unpack(sim.T, *unpack_values)
     print(clock() - clk)
     times.append(clock() - clk)
-    return res
 
-
-@pm.deterministic
-def mu(sim=sim, omega=omega, phi=phi, f=f):
+    # Compute values
     x = reduce_time(t_range, start=r_start, step=step)
     y = new_cases(x, sim[0], sim[1], sim[2], sim[3], sim[4], f=f, omega=omega, phi=phi)
     start_ix = (1998 - r_start) * 12
@@ -83,10 +95,11 @@ def mu(sim=sim, omega=omega, phi=phi, f=f):
 Y = pm.Binomial('Y', n=mu, p=p, observed=True, value=data)
 
 # TODO: Other Backend
-model = pm.Model([Y, sim, f, mu, omega, phi, f1, f2, f3, ])
+# model = pm.Model([Y, sim, f, mu, omega, phi, f1, f2, f3, ])
+model = pm.Model([Y, mu, omega, phi, f, f1, f2, f3, p])
 mcmc = pm.MCMC(model, db="ram")
 gclk = clock()
-mcmc.sample(iter=10, burn=0)  #######################################################################################
+mcmc.sample(iter=2, burn=0)  #######################################################################################
 print ("Global Time ",clock()-gclk)
 
 # times = np.array(times)
@@ -97,9 +110,9 @@ t_tally = 0
 m_f = mcmc.trace('f')[t_tally:].mean(axis=0)
 m_omega = mcmc.trace('omega')[t_tally:].mean()
 m_phi = mcmc.trace('phi')[t_tally:].mean()
-tr_mu = mcmc.trace('mu', chain=None)[:]
+tr_mu = mcmc.trace('mu', chain=None)[t_tally:]
 m_mu = tr_mu.mean(axis=0)
-m_p = mcmc.trace('p', chain=None)[:].mean(axis=0)
+m_p = mcmc.trace('p', chain=None)[t_tally:].mean(axis=0)
 
 # Show mean values fit
 clk = clock()

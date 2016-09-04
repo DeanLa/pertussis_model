@@ -12,11 +12,13 @@ def hetro_model(INP, t,
     # delta = mu = nums(N / death,1000) # Constant Birthing - checking purposes
     T = reduce_time(t, start=r_start, step=1 / N)
     t_max = max(0, int(T) - 1948)  # 1948 is hard coded as this is where the data begins
+    A = INP.sum()
 
     ## Compartments and Derivatives
-    S, Vap, Vwp, Is, Ia, R = unpack(INP, *unpack_values)
-    A = S + Vap + Vwp + Is + Ia + R
-    # print (A)
+    S, Vap, Vwp, Is, Ia, R = unpack(INP / A, *unpack_values)
+    # Aj = S + Vap + Vwp + Is + Ia + R # Size 1xJ
+
+    # return
     dS, dVap, dVwp, dIs, dIa, dR = (np.zeros(uv) for uv in unpack_values)  # Zeros by size
 
     I = Ia + Is  # Helper
@@ -42,7 +44,6 @@ def hetro_model(INP, t,
     # Vaccination
     if T < 1957:
         dS[1:] += S[:-1] * a  # IN
-
     if 2002 > T >= 1957:  # Begin wp
         # print (T)
         dVwp[1:1 + n_wp] += S[:n_wp] * a[:n_wp]  # IN: Age and vaccinate wP from S classes
@@ -113,7 +114,7 @@ def hetro_model(INP, t,
     Y -= mu_v * INP  # OUT: Death
     # print (Y)
     # Y[-1] -= delta[int(T) - 1948]
-    return Y
+    return Y * A
 
 def new_cases(x, S, Vap, Vwp, Is, Ia, f, omega=4, phi=2):
     def new(x, S, Vap, Vwp, Is, Ia):

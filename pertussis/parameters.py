@@ -17,14 +17,16 @@ unpack_values = [J] * 6
 
 # Scenarios
 # =========
+
+# Scenarios for alpha_ap = | 0.15 | 0.5 | 0.75 |
 alpha_ap = 0.5  # Chance to be symptomatic from aP
 alpha_wp = 1  # Chance to be symptomatic from wP
-young_factor = 400
-old_factor = 250
+
 # Waning
-omega = (1 / 30) * N  # Loss of immunity [1] 3e-5 est yearly [3] 1/30 yearly
-omega_ap = (1 / 30) * N  # Waning
-omega_wp = (1 / 30) * N  # Waning
+# Scenarios for omega_ap = | 4 y | 30 y |
+omega_ap = (1 / 30) * N  # Waning [6] as low as 4-12 years
+omega = (1 / 30) * N  # Loss of immunity [1] 3e-5 est yearly [3] 1/30 yearly [6] as low as 7-20 years
+omega_wp = omega
 
 # Demographics
 # ============
@@ -54,19 +56,22 @@ a_u = np.array((2 / 12, 4 / 12, 6 / 12, 1,
 
 a = N / (a_u - a_l)[:-1]
 
-# Efficacy and Waning
+# Vaccines
 # =====================
+# Efficacy
 # epsilon_ap = np.ones(6) * 1
 epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98)) # [3]
 epsilon_wp = np.ones(4) * 0.99
 n_ap = epsilon_ap.size
 n_wp = epsilon_wp.size
 # Multiply the last value to create length of AGE
-epsilon_ap = np.concatenate((epsilon_ap, epsilon_ap[-1] * np.ones(J - n_ap)))
+pad_vector = lambda vec:  np.concatenate((vec, vec[-1] * np.ones(J - vec.size)))
+epsilon_ap = pad_vector(epsilon_ap)
+# epsilon_ap = np.concatenate((epsilon_ap, epsilon_ap[-1] * np.ones(J - n_ap)))
 epsilon_wp = np.concatenate([epsilon_wp, epsilon_wp[-1] * np.ones(J - n_wp)])
-# print (epsilon_ap)
 
-
+# Healing
+# =====================
 
 gamma_s = (1 / 30)  # Healing rate Symptomatic [1] 1/6 [3] 1/25
 gamma_a = (1 / 8)  # Healing rate Asymptomatic [1] 16 days [3] 8
@@ -99,7 +104,11 @@ def collect_state0(S0=0.2, Is0=1e-3, death=death):
 [2] Headi Dangelis - Priming with...
 [3] Meagan C F - Cost Effectiveness of Next gen...
 [4] IMoH policy
-[5] Mossong Contact Matrix
+[5] Transmission of Bordetella pertussis to Young Infants
+[6] Duration_of_Immunity_Against_Pertussis_After.11
+[7] Acellular pertussis vaccines protect against disease but PNAS SI
+[8] Pertussis_Sources_of_Infection_and_Routes_of.4
+# [] Mossong Contact Matrix
 
 Age Groups:
 0. 0 - 2m
