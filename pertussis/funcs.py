@@ -97,5 +97,17 @@ def mse(x, y):
     return res.mean()
 
 
-def new_sick(vec):
-    pass
+def medlock(C, vec):
+    '''Takes a medlock symmetric Matrix with an ages vector, and stratifies the matrix according to the ages'''
+    v = [np.arange(a,b) for a, b in zip(vec[:-1], vec[1:])]
+    E = np.zeros([len(v)] * 2)
+    for i in range(len(v)):
+        for j in range(len(v)):
+            val = 0
+            cnt = 0
+            for vi in v[i]:
+                for vj in v[j]:
+                    cnt+=1
+                    val += C[min(C.shape[0] - 1, int(vi)//5), min(C.shape[1] - 1, int(vj)//5)]
+            E[i, j] = val / cnt
+    return E

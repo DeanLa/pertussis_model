@@ -83,7 +83,10 @@ def mu(omega=omega, phi=phi, f=f):
 
     # Compute values
     x = reduce_time(t_range, start=r_start, step=step)
-    y = new_cases(x, sim[0], sim[1], sim[2], sim[3], sim[4], f=f, omega=omega, phi=phi)
+    tmp = sim[3] * (1 - gamma_s)
+    y = sim[3][1:] - tmp[:-1]
+    y = np.append(0,y)
+    # y = new_cases(x, sim[0], sim[1], sim[2], sim[3], sim[4], f=f, omega=omega, phi=phi)
     start_ix = (1998 - r_start) * 12
     end_ix = (2014 - r_start) * 12
     # print (end_ix - start_ix)

@@ -1,22 +1,47 @@
 import numpy as np
 from numpy import cos, pi
+from scipy.stats import expon
 import pymc as pm
+import sys
+from pertussis import medlock
 
-J = 11  # Age Groups
-# E = 3  # Ethnicity Groups
-N = 1 / 365
-M = 1e-6
+# Demographics
+# =========================================================
+# Age Groups
+N = 1 / 365  # Step
+_ages = np.hstack((np.arange(0, 1, 2 / 12),  # First year: Every 2 months
+                   np.arange(1, 14, 1),  # Every year until age of 13
+                   15, 18, 21,  # High Scholl, Grad, Army
+                   np.arange(25, 66, 10),  # 10 Year gaps
+                   100))  # Death
+a_l = _ages[:-1]  # Lower limits
+a_u = _ages[1:]  # Upper limis
+a = N / (a_u - a_l)[:-1]
 
+# Constants
+
+C = np.genfromtxt('./data/mossong/medlock_avg_sym.csv', delimiter=',')  # Contact Matrix
+C = medlock(C, _ages)
+
+# Birth and Death
+# delta = np.ones(1100) * N / 75
+delta = np.genfromtxt('./data/demographics/birth_rate.csv', delimiter=',',
+                      skip_header=1, usecols=[3]) * N
+delta = np.pad(delta, (0, 1000), 'edge')
+# print(delta)
+mu = delta  # * _O  # Death [] yearly
+death = _ages[-1]
+
+# Constants
+# =========================================================
+J = _ages.size  # Age Groups
+M = 1e-6  # Small M
+unpack_values = [J] * 6
 _O = np.ones(J)
 _Z = np.zeros(J)
-# C = np.ones([J, J])  # * 1 / J  # Contact Matrix
-C = np.genfromtxt('./data/mossong/contact_11.csv', delimiter=',')  # Contact Matrix
-# print (C)
-unpack_values = [J] * 6
-
 
 # Scenarios
-# =========
+# =========================================================
 
 # Scenarios for alpha_ap = | 0.15 | 0.5 | 0.75 |
 alpha_ap = 0.5  # Chance to be symptomatic from aP
@@ -28,56 +53,30 @@ omega_ap = (1 / 30) * N  # Waning [6] as low as 4-12 years
 omega = (1 / 30) * N  # Loss of immunity [1] 3e-5 est yearly [3] 1/30 yearly [6] as low as 7-20 years
 omega_wp = omega
 
-# Demographics
-# ============
-# Birth
-# delta = np.ones(1100) * N / 75
-
-def get_delta():
-    # delta = 1.0 ** np.arange(0, 300, 1) * N / 75
-    delta = np.genfromtxt('./data/demographics/birth_rate.csv', delimiter=',',
-                          skip_header=1, usecols=[3]) * N
-
-    # print ("Y")
-    delta = np.append(delta, delta[-1] * np.ones(3000))
-    return delta
-
-
-death = 100
-delta = get_delta()
-
-mu = delta  # * _O  # Death [] yearly
-
-
-a_l = np.array((0, 2 / 12, 4 / 12, 6 / 12, 1,
-                7, 13, 20, 25, 45, 65))
-a_u = np.array((2 / 12, 4 / 12, 6 / 12, 1,
-                7, 13, 20, 25, 45, 65, 100))
-
-a = N / (a_u - a_l)[:-1]
-
 # Vaccines
-# =====================
+# =========================================================
+# Policy
+_vax_ages = [2 / 12, 4 / 12, 6 / 12, 1, 7, 13]
+assert all(np.in1d(_vax_ages, _ages)), "Vaccine should happen on listed Age Group:\n {}".format(_ages)
+vax = np.in1d(_ages, _vax_ages, ).astype(int)
+vax
+
 # Efficacy
 # epsilon_ap = np.ones(6) * 1
-epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98)) # [3]
-epsilon_wp = np.ones(4) * 0.99
-n_ap = epsilon_ap.size
-n_wp = epsilon_wp.size
+# epsilon_wp = np.ones(4) * 0.9
+epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
+epsilon_wp = [0.9]
+n_ap = len(epsilon_ap)
+n_wp = len(epsilon_wp)
 # Multiply the last value to create length of AGE
-pad_vector = lambda vec:  np.concatenate((vec, vec[-1] * np.ones(J - vec.size)))
-epsilon_ap = pad_vector(epsilon_ap)
-# epsilon_ap = np.concatenate((epsilon_ap, epsilon_ap[-1] * np.ones(J - n_ap)))
-epsilon_wp = np.concatenate([epsilon_wp, epsilon_wp[-1] * np.ones(J - n_wp)])
+epsilon_ap = np.pad(epsilon_ap, (0, J - n_ap), 'edge')
+epsilon_wp = np.pad(epsilon_wp, (0, J - n_wp), 'edge')
 
-# Healing
-# =====================
-
-gamma_s = (1 / 30)  # Healing rate Symptomatic [1] 1/6 [3] 1/25
+# Recovery
+# =========================================================
+gamma_s = (1 / 25)  # Healing rate Symptomatic [1] 1/6 [3] 1/25
 gamma_a = (1 / 8)  # Healing rate Asymptomatic [1] 16 days [3] 8
-
-
-
+recovered_ratio = expon(scale = 1 / gamma_s).cdf(1) # Ratio of people recovered today
 
 def collect_state0(S0=0.2, Is0=1e-3, death=death):
     # _pop = _O / J
@@ -98,6 +97,8 @@ def collect_state0(S0=0.2, Is0=1e-3, death=death):
 
     return S, Vap, Vwp, Is, Ia, R
 
+
+sys.exit(-1)
 
 '''Supplement:
 [1] Neal Ferguson - A change in
