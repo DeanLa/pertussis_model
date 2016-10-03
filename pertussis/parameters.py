@@ -3,10 +3,12 @@ from numpy import cos, pi
 from scipy.stats import expon
 import pymc as pm
 import sys
-from pertussis import medlock
+from pertussis import medlock, SCENARIO
+import logging
+from logging import warning as warn, info, error, debug
 
 # Demographics
-# =========================================================
+# =====================================================================================================================
 # Age Groups
 N = 1 / 365  # Step
 _ages = np.hstack((np.arange(0, 1, 2 / 12),  # First year: Every 2 months
@@ -17,9 +19,9 @@ _ages = np.hstack((np.arange(0, 1, 2 / 12),  # First year: Every 2 months
 a_l = _ages[:-1]  # Lower limits
 a_u = _ages[1:]  # Upper limis
 a = N / (a_u - a_l)[:-1]
-
+print (_ages)
+print (a)
 # Constants
-
 C = np.genfromtxt('./data/mossong/medlock_avg_sym.csv', delimiter=',')  # Contact Matrix
 C = medlock(C, _ages)
 
@@ -27,66 +29,71 @@ C = medlock(C, _ages)
 # delta = np.ones(1100) * N / 75
 delta = np.genfromtxt('./data/demographics/birth_rate.csv', delimiter=',',
                       skip_header=1, usecols=[3]) * N
-delta = np.pad(delta, (0, 1000), 'edge')
+delta = np.pad(delta, (0, 100), 'edge')
+# print (delta / N)
 # print(delta)
-mu = delta  # * _O  # Death [] yearly
+mu = np.genfromtxt('./data/demographics/death_rate.csv', delimiter=',',
+                   skip_header=1)[:, 1:] * N  # * _O  # Death [] yearly
+mu = np.pad(mu, ((0, 100), (0, 0)), 'edge')
 death = _ages[-1]
 
+aliyah = np.genfromtxt('./data/demographics/aliyah.csv', delimiter=',',
+                       skip_header=1)[:, 1:] * N
 # Constants
-# =========================================================
-J = _ages.size  # Age Groups
+# =====================================================================================================================
+J = a_l.size  # Age Groups
 M = 1e-6  # Small M
 unpack_values = [J] * 6
 _O = np.ones(J)
 _Z = np.zeros(J)
 
 # Scenarios
-# =========================================================
-
+# =====================================================================================================================
+scenario_number = 'main'
 # Scenarios for alpha_ap = | 0.15 | 0.5 | 0.75 |
-alpha_ap = 0.5  # Chance to be symptomatic from aP
+alpha_ap = SCENARIO[scenario_number]['alpha_ap']  # Chance to be symptomatic from aP
 alpha_wp = 1  # Chance to be symptomatic from wP
 
 # Waning
 # Scenarios for omega_ap = | 4 y | 30 y |
-omega_ap = (1 / 30) * N  # Waning [6] as low as 4-12 years
-omega = (1 / 30) * N  # Loss of immunity [1] 3e-5 est yearly [3] 1/30 yearly [6] as low as 7-20 years
-omega_wp = omega
+omega_ap = SCENARIO[scenario_number]['omega_ap'] * N  # Waning [6] as low as 4-12 years
+omega = (1 / 30000) * N  # Loss of immunity [1] 3e-5 est yearly [3] 1/30 yearly [6] as low as 7-20 years
+omega_wp = (1 / 30) * N
 
 # Vaccines
-# =========================================================
+# =====================================================================================================================
 # Policy
 _vax_ages = [2 / 12, 4 / 12, 6 / 12, 1, 7, 13]
 assert all(np.in1d(_vax_ages, _ages)), "Vaccine should happen on listed Age Group:\n {}".format(_ages)
-vax = np.in1d(_ages, _vax_ages, ).astype(int)
-vax
+coverage = 1
+vax_ap = np.in1d(a_u, _vax_ages).astype(int)  # Currently holds indexes for efficacy
 
 # Efficacy
-# epsilon_ap = np.ones(6) * 1
-# epsilon_wp = np.ones(4) * 0.9
+epsilon_wp = 0.99
 epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
-epsilon_wp = [0.9]
-n_ap = len(epsilon_ap)
-n_wp = len(epsilon_wp)
-# Multiply the last value to create length of AGE
-epsilon_ap = np.pad(epsilon_ap, (0, J - n_ap), 'edge')
-epsilon_wp = np.pad(epsilon_wp, (0, J - n_wp), 'edge')
+epsilon_ap = (np.take(epsilon_ap, np.cumsum(vax_ap) - 1))  # Turn into vector
+
+vax_ap = coverage * vax_ap.astype(float)[:-1]  # Now multiplied by coverage
+vax_wp = np.in1d(a_u, [2 / 12, 4 / 12, 6 / 12, 1]).astype(float)[:-1]  # Hard coded on purpose - old policy
+print (vax_wp)
+if alpha_ap == "like epsilon":
+    alpha_ap = (1 - epsilon_ap)
+# Susceptibility changes
+sc = [0, 1, 21, death]
+sc = np.array([sum(_ages[:-1] >= x) for x in sc])
+sc = sc[:-1] - sc[1:]
 
 # Recovery
-# =========================================================
+# =====================================================================================================================
 gamma_s = (1 / 25)  # Healing rate Symptomatic [1] 1/6 [3] 1/25
 gamma_a = (1 / 8)  # Healing rate Asymptomatic [1] 16 days [3] 8
-recovered_ratio = expon(scale = 1 / gamma_s).cdf(1) # Ratio of people recovered today
 
+
+# =====================================================================================================================
 def collect_state0(S0=0.2, Is0=1e-3, death=death):
-    # _pop = _O / J
-    # _pop = np.append(a, death - 65)# / death
-    _pop = (a_u - a_l)[:-1]
-    _pop = np.append(_pop, death - 65)
-    _pop /= _pop.sum()
-    # print(_pop)
-    # print(_pop.sum())
-    # print ()
+    _pop = np.genfromtxt('./data/demographics/population_new.csv', delimiter=',',
+                         skip_header=True, max_rows=1)[1:] * 1000
+    print(_pop.sum())
     # Compartments (State 0)
     S = S0 * _pop
     Vap = 0 * _pop
@@ -98,7 +105,13 @@ def collect_state0(S0=0.2, Is0=1e-3, death=death):
     return S, Vap, Vwp, Is, Ia, R
 
 
-sys.exit(-1)
+# print (a_l, '  ', a_l.size)
+# print (a_u, '  ', a_u.size)
+# print (a_u - a_l, '  ', (a_u - a_l).size)
+# print (alpha_ap, omega_ap)
+
+# print (alpha_ap)
+# sys.exit("End of parameters")
 
 '''Supplement:
 [1] Neal Ferguson - A change in

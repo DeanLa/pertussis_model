@@ -60,3 +60,6 @@ def cases_month_age(path='./data/_imoh/cases.csv'):
     h = np.histogram2d(x.Age, x.YM, bins=[bins_ages, bins_time], weights=x.W)
 
     return h[0]
+
+if __name__ == '__main__':
+    pass

@@ -29,7 +29,7 @@ def draw_split(x, y, which):
     return fig, axs
 
 
-def draw_model(x, y, labels=None, split=None, collapse=False):
+def draw_model(x, y, labels=None, split=None, collapse=False, ages = np.arange(0,J,1)):
     l = len(y)
     if l > 5:
         split = False
@@ -43,7 +43,7 @@ def draw_model(x, y, labels=None, split=None, collapse=False):
             ax = axs[i]
         except:
             ax = axs
-        z = y[i][:, :]
+        z = y[i][ages, :]
         if collapse:
             z = z.sum(axis=0)
         lines = ax.plot(x, z.T, lw=1.3)
@@ -55,10 +55,9 @@ def draw_model(x, y, labels=None, split=None, collapse=False):
         # ub = 1
         ax.set_ylim([0, ub])
         # ax.set_xlim(left=1948)#, right = 2010)
-        ax.plot([1957, 1957], [0, ub], "k--")
-        ax.plot([2002, 2002], [0, ub], "k--")
+        ax.vlines([1957, 2002, 1948], 0, ub, linestyle='--')
         if l <= 3:
-            ax.legend(lines, [j + 1 for j in range(len(lines))], loc='lower left')
+            ax.legend(lines, ["{:.2f}-{:.2f}".format(a_l[j], a_u[j]) for j in ages], loc='lower left')
     if split:
         axs[split].legend(lines, [j + 1 for j in range(len(lines))], loc='lower left')
 
@@ -124,7 +123,7 @@ def mu_chart(mu, data):
     from scipy.stats.mstats import mquantiles
     n_months = mu.shape[-1]
     x = 1998 + np.arange(0, n_months, 1) / 12
-    fig, axs = plt.subplots(4, 3, figsize=(16, 16))
+    fig, axs = plt.subplots(4, np.ceil(J/4), figsize=(16, 16))
     axs = np.hstack(axs)
     for i in range(J):
         ax = axs[i]

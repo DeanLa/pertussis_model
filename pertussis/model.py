@@ -1,75 +1,80 @@
 from pertussis import *
 import pymc as pm
 from pprint import pprint
-#
-# def test_model():
-#     del (J)
-#     from pertussis import J
-#     print (J)
+
 
 def hetro_model(INP, t,
                 o, p, f, r_start):
-    # delta = mu = nums(N / death,1000) # Constant Birthing - checking purposes
+    '''The ODE set of the model. t is number of days since epoch, T is date in numeric format'''
+    ## Initialize
+    # =================================================================================================================
     T = reduce_time(t, start=r_start, step=1 / N)
-    t_max = max(0, int(T) - 1948)  # 1948 is hard coded as this is where the data begins
-    A = INP.sum()
+    # print (T)
+    t_max = min(2014-1955, max(0, int(T) - 1955))  # 1955 is hard coded as this is where the data begins, 2014 where it ends
+    # print (t_max, end=' ')
+    # A = INP.reshape((6, INP / 6))
+    # print(type(INP))
+    # A = INP.sum()  # Normalizing constant
 
-    ## Compartments and Derivatives
-    S, Vap, Vwp, Is, Ia, R = unpack(INP / A, *unpack_values)
-    # Aj = S + Vap + Vwp + Is + Ia + R # Size 1xJ
+    # Compartments and Derivatives
+    A = sum(unpack(INP, *unpack_values))
 
-    # return
+    S, Vap, Vwp, Is, Ia, R = unpack(INP / A.sum(), *unpack_values)
+
+
+    # Initialize return values
     dS, dVap, dVwp, dIs, dIa, dR = (np.zeros(uv) for uv in unpack_values)  # Zeros by size
 
+    ## Helpers
     I = Ia + Is  # Helper
-    beta_ = (1 + beta(T, o, p) * f) * 0.01
-    # print (beta_.shape, IC.shape)
+    beta_ = (1 + beta(T, o, p) * f) / 100
     IC = I.dot(C)
     lambda_ = beta_ * IC  # Needs to be normalized
+
+    # TODO: Check this for model correctness (Codewise it's solid)
+    e_ap = (1 - epsilon_ap) / alpha_ap  # Helper - vaccine unefficacy
+    e_wp = (1 - epsilon_wp) / alpha_wp  # Helper - vaccine unefficacy
     # IsC = Is.dot(C)
     # IaC = Ia.dot(C)
     # lambda_s = beta_ * IaC
     # lambda_a = beta_ * IsC
     # lambda_ = lambda_s + lambda_a
-    e_ap = alpha_ap * (1 - epsilon_ap)  # Helper
-    e_wp = alpha_wp * (1 - epsilon_wp)  # Helper
-    ## Equations
 
+    ## Equations
+    # =================================================================================================================
+    #Demographic change
+    demographic_change = 2300 >= T >= 1955
     # Susceptible
-    dS[0] = delta[t_max]  # IN: Birth rate
-    # print(T, int(T) - 1948,dS[0])
+    # Birth
+    if demographic_change:
+        dS[0] = delta[t_max]  # IN: Birth rate
     dS += omega * R + omega_ap * Vap + omega_wp * Vwp  # IN: Waning from Natural and vaccine
     dS -= lambda_ * S  # OUT: Becoming infected
 
     # Vaccination
-    if T < 1957:
+    if 1955 <= T < 1957:
         dS[1:] += S[:-1] * a  # IN
-    if 2002 > T >= 1957:  # Begin wp
-        # print (T)
-        dVwp[1:1 + n_wp] += S[:n_wp] * a[:n_wp]  # IN: Age and vaccinate wP from S classes
-        dS[1 + n_wp:] += S[n_wp:-1] * a[n_wp:]  # IN: Age from previous age no vaccine
-        pass
-    if T >= 2002:  # Begin aP
-        dVap[1:1 + n_ap] += S[:n_ap] * a[:n_ap]  # IN: Age and vaccinate aP from S classes
-        dS[1 + n_ap:] += S[n_ap:-1] * a[n_ap:]  # #IN: Age from previous age no vaccine
+    if 1957 <= T < 2002:  # Begin wp
+        dVwp[1:] += vax_wp * a * S[:-1]  # IN: Age and vaccinate wP from S classes
+        dS[1:] += (1 - vax_wp) * a * S[:-1]  # IN: Age from previous age no vaccine
 
-    # dS[1:] += S[:-1] * a  # IN
-    # COUNTER of new cases
+    if T >= 2002:  # Begin aP
+        dVap[1:] += vax_ap * a * S[:-1]  # IN: Age and vaccinate aP from S classes
+        dS[1:] += (1 - vax_ap) * a * S[:-1]  # IN: Age from previous age no vaccine
 
     dVap -= lambda_ * e_ap * Vap  # OUT: Getting sick (reduced by efficacy)
     dVwp -= lambda_ * e_wp * Vwp  # OUT: Getting sick (reduced by efficacy)
-    dVap -= Vap * omega_ap  # OUT: Waning
+    dVap -= Vap * omega_ap  # OUT: Waning to S
     dVwp -= Vwp * omega_wp  # OUT: Waning
 
     # Infected
-    infected_ap = lambda_ * e_ap * Vap  # HELPER: Infected with ap
-    infected_wp = lambda_ * (e_wp * Vwp + S)  # HELPER: Infected with wp or no vaccine
+    I_ap = lambda_ * e_ap * Vap  # HELPER: Infected with ap
+    I_wp = lambda_ * (e_wp * Vwp + S)  # HELPER: Infected with wp or no vaccine
 
-    dIs = alpha_ap * infected_ap + alpha_wp * infected_wp  # IN: Infected with symptoms chance
+    dIs = alpha_ap * I_ap + alpha_wp * I_wp  # IN: Infected with symptoms chance
     dIs -= gamma_s * Is  # OUT: Recovered
     dIs += M
-
-    dIa = (1 - alpha_ap) * infected_ap + (1 - alpha_wp) * infected_wp  # IN: Infected with NO symptoms chance
+    dIa = (1 - alpha_ap) * I_ap + (1 - alpha_wp) * I_wp  # IN: Infected with NO symptoms chance
     dIa -= gamma_a * Ia  # OUT: Recovered
     dIa += M
 
@@ -78,43 +83,41 @@ def hetro_model(INP, t,
     dR -= omega * R  # OUT: Natrual waning
     dR -= 2 * M
 
+    ##################### TODO: Dean needs to check this...
     ## Regular Aging
-    # S
-    dS[:-1] -= S[:-1] * a  # OUT: Age out to Next V or Next S, OUT is the same
-    # V
-    dVap[1:] += Vap[:-1] * a  # IN
-    dVap[:-1] -= Vap[:-1] * a  # OUT
-    dVwp[1:] += Vwp[:-1] * a  # IN
-    dVwp[:-1] -= Vwp[:-1] * a  # OUT
-    # I and R
-    dR[1:] += R[:-1] * a  # IN
-    dR[:-1] -= R[:-1] * a  # OUT
-    dIs[1:] += Is[:-1] * a  # IN
-    dIs[:-1] -= Is[:-1] * a  # OUT
-    dIa[1:] += Ia[:-1] * a  # IN
-    dIa[:-1] -= Ia[:-1] * a  # OUT
+    if T >= 1955:
+        # S
+        dS[:-1] -= S[:-1] * a  # OUT: Age out to Next V or Next S, OUT is the same
+        # V
+        a_corr_ap = age_correction(2002, T, a_u)  # get the age transition correction vector for ap
+        a_corr_wp = age_correction(1957, T, a_u)  # get the age transition correction vector for wp
+        dVap[1:] += Vap[:-1] * a * a_corr_ap  # IN
+        dVap[:-1] -= Vap[:-1] * a * a_corr_ap  # OUT
+        dVwp[1:] += Vwp[:-1] * a * a_corr_wp  # IN
+        dVwp[:-1] -= Vwp[:-1] * a * a_corr_wp  # OUT
+        # I and R
+        dIs[1:] += Is[:-1] * a  # IN
+        dIs[:-1] -= Is[:-1] * a  # OUT
+        dIa[1:] += Ia[:-1] * a  # IN
+        dIa[:-1] -= Ia[:-1] * a  # OUT
+        dR[1:] += R[:-1] * a  # IN
+        dR[:-1] -= R[:-1] * a  # OUT
+
+
+
+    # if t_max > 2:
+    #     sys.exit('TEST')
+
     ## Housekeeping
-    Y = pack_flat((dS, dVap, dVwp, dIs, dIa, dR))
-    # Older people die more
-    '''I fix the death rate so that old people die more often
-    If this isn't adjusted to oldest age will explode. We manually fit this to data
-    This part in the equation can be expanded in a paper'''
-    mu_tmp = mu[t_max]
-    # print (mu_tmp)
-    r = 0.7
-    mu_v = np.ones(J) * mu_tmp * r
-    mu_v[-1] += (1 - r) * mu_tmp * J
-    s = (mu_v * A).sum()
-    # print("S", s)
-    # print ("mu_v", mu_v,"\n\n", mu_v / s)
-    # return
-    mu_v = np.tile(mu_v, 6) * mu_tmp / s
-    # print (mu_v*365)
-    # return
-    Y -= mu_v * INP  # OUT: Death
-    # print (Y)
-    # Y[-1] -= delta[int(T) - 1948]
-    return Y * A
+    Y = pack_flat((dS, dVap, dVwp, dIs, dIa, dR)) * A.sum()
+    add_aliyah = np.tile(aliyah[t_max] / A, 6)
+    mu_current = np.tile(mu[t_max], 6)
+    if demographic_change:
+        Y += add_aliyah * INP  # IN: Aliyah
+        Y -= mu_current * INP  # OUT: Death
+    # sys.exit('inside model')
+    return Y
+
 
 def new_cases(x, S, Vap, Vwp, Is, Ia, f, omega=4, phi=2):
     def new(x, S, Vap, Vwp, Is, Ia):
@@ -130,6 +133,7 @@ def new_cases(x, S, Vap, Vwp, Is, Ia, f, omega=4, phi=2):
         infected_wp = lambda_ * (e_wp * Vwp + S)  # HELPER: Infected with wp or no vaccine
         d_new = alpha_ap * infected_ap + alpha_wp * infected_wp
         return d_new
+
     res = np.zeros((J, x.size))
     for i in range(x.size):
         res[:, i] = new(x[i], S[:, i], Vap[:, i], Vwp[:, i], Is[:, i], Ia[:, i])  # .sum()

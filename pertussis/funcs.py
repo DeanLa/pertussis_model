@@ -9,10 +9,10 @@ def check(x=2):
 
 
 def beta(t, omega, phi):
-    if t >= 1948:
-        return (1 + cos((2 * pi) * (phi / omega + t / omega)))
+    if t >= 1930:
+        return cos((2 * pi) * (phi / omega + t / omega))
     else:
-        return 1
+        return 0
 
 
 def pack_flat(Y):
@@ -31,7 +31,7 @@ def unpack(Y, *args):
             sum_args += a[0] * a[1]
         else:
             sum_args += a
-    assert len(Y) == sum_args, "Length of Y must be equal the bins"
+    assert len(Y) == sum_args, "Length of Y must be equal the bins {} != {}".format(len(Y), sum_args)
     res = []
     idx = 0
     for i, arg in enumerate(args):
@@ -65,7 +65,7 @@ def reduce_month(vec):
               30, 31, 30, 31)
     if vec.ndim == 1:
         l = vec.size
-        assert l % 365 == 0, "Vector must divide with 365"
+        assert l % 365 == 0, "Vector must divide with 365. Current modulo: {}".format(l%365)
         months = np.tile(months, l // 365)
         months = np.cumsum(months)
         res = np.split(vec, months[:-1])
@@ -111,3 +111,10 @@ def medlock(C, vec):
                     val += C[min(C.shape[0] - 1, int(vi)//5), min(C.shape[1] - 1, int(vj)//5)]
             E[i, j] = val / cnt
     return E
+
+
+def age_correction(start_year, T, age_vec):
+    '''Takes a start year, current year T and age vector of the upper bound of the age group (a_u)
+     returns a vector of 0 and 1 to avoid transition to unwanted age groups '''
+    vec = (T - start_year) > age_vec
+    return vec.astype(int)[:-1]

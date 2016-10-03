@@ -7,11 +7,10 @@ from datetime import datetime as dt
 from pprint import pprint
 import pickle
 from copy import copy
-
+np.set_printoptions(edgeitems=5, linewidth=200, suppress=True)
 from pertussis import *
 
-# J = 12
-# print(J)
+print (J)
 # Initial
 r_start = 1920
 r_end = 2015
@@ -32,10 +31,10 @@ data = cases_month_age()
 # Parameters
 state_0 = collect_state0()
 state_0 = pack_flat(state_0)
-
-#######################
-###### Run Model ######
-#######################
+# sys.exit("After collect state 0")
+###################################################################################################################
+#########################                            Run Model                   ##################################
+###################################################################################################################
 
 # Priors
 s1, s2 = 4, 3
@@ -48,13 +47,14 @@ f2 = pm.Uniform('f2', 0, f_top)
 f3 = pm.Uniform('f3', 0, f_top)
 
 p = pm.Uniform('p', 1 / 400, 1 / 60)
+# p = 1/400
 
 
 @pm.deterministic
 def f(f1=f1, f2=f2, f3=f3):
-    s1, s2 = 4, 3
-    s3 = J - s1 - s2
-    return np.concatenate((nums(f1, s1), nums(f2, s2), nums(f3, s3)))
+    # s1, s2 = 6, 3
+    # s3 = J - s1 - s2
+    return np.concatenate((nums(f1, sc[0]), nums(f2, sc[1]), nums(f3, sc[2])))
 # f = np.concatenate((nums(f1, s1), nums(f2, s2), nums(f3, s3)))
 
 # @pm.deterministic(trace=False)
@@ -74,6 +74,7 @@ def f(f1=f1, f2=f2, f3=f3):
 def mu(omega=omega, phi=phi, f=f):
     # Run simulation
     clk = clock()
+    # print (t_range.size)
     sim = odeint(hetro_model, pack_flat(state_0), t_range,
                  args=(omega, phi, f, r_start))
 
@@ -82,17 +83,19 @@ def mu(omega=omega, phi=phi, f=f):
     times.append(clock() - clk)
 
     # Compute values
-    x = reduce_time(t_range, start=r_start, step=step)
-    tmp = sim[3] * (1 - gamma_s)
-    y = sim[3][1:] - tmp[:-1]
-    y = np.append(0,y)
+    # x = reduce_time(t_range, start=r_start, step=step)
+    # tmp = sim[3] * (1 - gamma_s)
+    # y = sim[3][1:] - tmp[:-1]
+    y = sim[3] * gamma_s
+    # print (y.size % 365)
+    # y = np.append(0,y)
     # y = new_cases(x, sim[0], sim[1], sim[2], sim[3], sim[4], f=f, omega=omega, phi=phi)
     start_ix = (1998 - r_start) * 12
     end_ix = (2014 - r_start) * 12
     # print (end_ix - start_ix)
     res = reduce_month(y)[:, start_ix:end_ix]
     return res
-
+# print (mu.value)
 
 # Y = pm.Normal('Y', mu=mu1, tau=1 / sigma1 ** 2, observed=True, value=data)
 Y = pm.Binomial('Y', n=mu, p=p, observed=True, value=data)
@@ -102,7 +105,7 @@ Y = pm.Binomial('Y', n=mu, p=p, observed=True, value=data)
 model = pm.Model([Y, mu, omega, phi, f, f1, f2, f3, p])
 mcmc = pm.MCMC(model, db="ram")
 gclk = clock()
-mcmc.sample(iter=2, burn=0)  #######################################################################################
+mcmc.sample(iter=1, burn=0)  #######################################################################################
 print ("Global Time ",clock()-gclk)
 
 # times = np.array(times)
@@ -132,8 +135,8 @@ y.append(all)
 
 # PLOT
 figs = []
-fig, axs = mu_chart(tr_mu * m_p, data)
-figs.append(fig)
+# fig, axs = mu_chart(tr_mu * m_p, data)
+# figs.append(fig)
 
 fig1, ax1 = draw_model(x, y[3:], ["Infected Is", "Infected Ia", "Recovered", "Healthy", "All"], split=0, collapse=True)
 figs.append(fig1)
@@ -149,7 +152,7 @@ ax3[0].set_ylim(0, 0.05)
 figs.append(fig3)
 
 plt.tight_layout()
-path = write_report(vars, x, y, figs, mcmc)
+path = write_report(vars, x, y, figs, scenario_number, mcmc)
 # with open (path+"mcmc.pickle", 'wb') as pickle_file:
 #     pickle.dump(mcmc.trace(), pickle_file)
 # plt.show()
