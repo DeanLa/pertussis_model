@@ -1,6 +1,6 @@
 # INITIAL
-from .funcs import *
 from .config import *
+from .funcs import *
 
 # MODEL
 from .parameters import *

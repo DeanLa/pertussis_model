@@ -9,7 +9,7 @@ def check(x=2):
 
 
 def beta(t, omega, phi):
-    if t >= 1930:
+    if t >= 1903:
         return cos((2 * pi) * (phi / omega + t / omega))
     else:
         return 0
@@ -118,3 +118,8 @@ def age_correction(start_year, T, age_vec):
      returns a vector of 0 and 1 to avoid transition to unwanted age groups '''
     vec = (T - start_year) > age_vec
     return vec.astype(int)[:-1]
+
+def new_cases(vec, healing):
+    ret = vec[1:] - (1-healing) * vec[:-1]
+    ret = np.hstack((0,ret))
+    return ret

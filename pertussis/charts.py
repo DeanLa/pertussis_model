@@ -45,6 +45,7 @@ def draw_model(x, y, labels=None, split=None, collapse=False, ages = np.arange(0
             ax = axs
         z = y[i][ages, :]
         if collapse:
+            z = y[i][:, :]
             z = z.sum(axis=0)
         lines = ax.plot(x, z.T, lw=1.3)
         try:

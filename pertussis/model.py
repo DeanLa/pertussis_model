@@ -118,27 +118,27 @@ def hetro_model(INP, t,
     # sys.exit('inside model')
     return Y
 
-
-def new_cases(x, S, Vap, Vwp, Is, Ia, f, omega=4, phi=2):
-    def new(x, S, Vap, Vwp, Is, Ia):
-        e_ap = 1 - epsilon_ap  # Helper
-        e_wp = 1 - epsilon_wp  # Helper
-        beta_ = (1 + beta(x, omega, phi) * f) * 0.01
-        IsC = Is.dot(C)
-        IaC = Ia.dot(C)
-        lambda_s = beta_ * IaC
-        lambda_a = beta_ * IsC
-        lambda_ = lambda_s + lambda_a
-        infected_ap = lambda_ * e_ap * Vap  # HELPER: Infected with ap
-        infected_wp = lambda_ * (e_wp * Vwp + S)  # HELPER: Infected with wp or no vaccine
-        d_new = alpha_ap * infected_ap + alpha_wp * infected_wp
-        return d_new
-
-    res = np.zeros((J, x.size))
-    for i in range(x.size):
-        res[:, i] = new(x[i], S[:, i], Vap[:, i], Vwp[:, i], Is[:, i], Ia[:, i])  # .sum()
-
-    return res
+#
+# def new_cases(x, S, Vap, Vwp, Is, Ia, f, omega=4, phi=2):
+#     def new(x, S, Vap, Vwp, Is, Ia):
+#         e_ap = 1 - epsilon_ap  # Helper
+#         e_wp = 1 - epsilon_wp  # Helper
+#         beta_ = (1 + beta(x, omega, phi) * f) * 0.01
+#         IsC = Is.dot(C)
+#         IaC = Ia.dot(C)
+#         lambda_s = beta_ * IaC
+#         lambda_a = beta_ * IsC
+#         lambda_ = lambda_s + lambda_a
+#         infected_ap = lambda_ * e_ap * Vap  # HELPER: Infected with ap
+#         infected_wp = lambda_ * (e_wp * Vwp + S)  # HELPER: Infected with wp or no vaccine
+#         d_new = alpha_ap * infected_ap + alpha_wp * infected_wp
+#         return d_new
+#
+#     res = np.zeros((J, x.size))
+#     for i in range(x.size):
+#         res[:, i] = new(x[i], S[:, i], Vap[:, i], Vwp[:, i], Is[:, i], Ia[:, i])  # .sum()
+#
+#     return res
 
 
 def hetro_model_relative(INP, t,

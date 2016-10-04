@@ -7,12 +7,15 @@ from datetime import datetime as dt
 from pprint import pprint
 import pickle
 from copy import copy
-# np.set_printoptions(edgeitems=5, linewidth=170, suppress=True, precision=8)
+# import logging
+# from pertussis import logger
 from pertussis import *
 
+logger.setLevel(logging.INFO)
+
 # Initial
-r_start = 1920
-r_end = 2010
+r_start = 1880
+r_end = 1960
 step = 1 / N
 t_end = expand_time(r_end, start=r_start, step=step)
 t_start = expand_time(r_start, start=r_start, step=step)
@@ -36,38 +39,22 @@ state_0 = pack_flat(state_0)
 ###################################################################################################################
 
 # Priors
-omega = 8
+o = 8
 phi = 2
 f_top = 25
 divi = 1
-f1 = 2 / divi
+f1 = 4 / divi
 f2 = 0.4 / divi
 f3 = 0.1 / divi
 f = np.concatenate((nums(f1, sc[0]), nums(f2, sc[1]), nums(f3, sc[2])))
 
 p = 1 / 100
-# # def mu(omega=omega, phi=phi, f=f):
-#     # Run simulation
-# clk = clock()
-#     # print (t_range.size)
-# sim = odeint(hetro_model, pack_flat(state_0), t_range,
-#              args=(omega, phi, f, r_start))
-#
-# sim = unpack(sim.T, *unpack_values)
-# print(clock() - clk)
-# times.append(clock() - clk)
-#
-# y = sim[3] * gamma_s
-# start_ix = (1998 - r_start) * 12
-# end_ix = (2014 - r_start) * 12
-#     # print (end_ix - start_ix)
-# res = reduce_month(y)[:, start_ix:end_ix]
 
 # Show mean values fit
 clk = clock()
 RES = odeint(hetro_model, state_0, t_range,
-             args=(omega, phi, f, r_start))
-print(clock() - clk)
+             args=(o, phi, f, r_start))
+logger.info(" " * 20 + "TIME{:10.5}".format(clock() - clk))
 # # Results
 # RES *= omega_ap
 x = reduce_time(t_range, start=r_start, step=step)
@@ -79,24 +66,27 @@ y.append(all)
 
 # PLOT
 names = ["Susceptible", "Vaccinated aP", "Vaccinated wP", "Infected Is", "Infected Ia", "Recovered", "Healthy", "All"]
-draw_ages = [0,1,-4,-3,-2,-1]
+draw_ages = [0, 1, -4, -3, -2, -1]
 fig1, ax1 = draw_model(x, y[3:], names[3:], split=0, collapse=True, ages=draw_ages)
 pop = np.genfromtxt('./data/demographics/birth_rate.csv', delimiter=',', usecols=[0, 2], skip_header=1)
 ax1[-1].plot(pop[:, 0], 1000 * pop[:, 1], label="Real", c='k')
 
-fig3, ax3 = draw_model(x, y[2:3], names[2:3], split=False, collapse=False, ages=draw_ages)
+# fig3, ax3 = draw_model(x, y[2:3], names[2:3], split=False, collapse=False, ages=draw_ages)
 
 fig2, ax2 = plt.subplots()
 ax2.plot(x, y[3].sum(axis=0), label='S')
 ax2.plot(x, y[4].sum(axis=0), label='A')
 ax2.legend()
+
+fig3, ax3 = plt.subplots()
+Ii = y[3].sum(axis=0)
+ax3.plot(x, new_cases(Ii, gamma_s))
+ax3.set_title("NEW SICK")
+
 # fig, axs = plt.subplots()
 # axs.plot(x, y[-1].sum(axis=0), label = "Sim")
 # axs.plot(pop[:,0],1000*pop[:,1], label="Real")
 # axs.legend()
 
 plt.tight_layout()
-# path = write_report(vars, x, y, figs, scenario_number, mcmc)
-# with open (path+"mcmc.pickle", 'wb') as pickle_file:
-#     pickle.dump(mcmc.trace(), pickle_file)
 plt.show()

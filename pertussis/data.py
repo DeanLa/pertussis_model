@@ -22,7 +22,7 @@ def cases_yearly(path='./data/yearly.csv'):
     '''Loads the yearly data per 1e5'''
     data = np.genfromtxt(path, delimiter=',', skip_header=1)[:, 1]
     years = np.genfromtxt(path, delimiter=',', skip_header=1)[:, 0]
-    print("{} Yearly data values".format(len(years)))
+    logger.info("{} Yearly data values".format(len(years)))
     return data, years
 
 
@@ -32,7 +32,7 @@ def cases_monthly(path='./data/_imoh/cases.csv'):
     try:
         pop = pd.read_csv('./data/demographics/birth_rate.csv')
     except:
-        print("Can't find path to population by years")
+        logger.error("Can't find path to population by years")
         return
     pop['Y'] = pop['year']
     pop = pop[['Y', 'population']]
@@ -43,7 +43,7 @@ def cases_monthly(path='./data/_imoh/cases.csv'):
     # Create per 100 k
     data = (1e5 / 1e3) * df['Age'] / df['population']
     months = df.index.get_level_values(level=0).values + df.index.get_level_values(level=1).values / 12
-    print("{} Monthly data values".format(len(months)))
+    logger.info("{} Monthly data values".format(len(months)))
     return data.values, months
 
 

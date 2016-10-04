@@ -1,9 +1,23 @@
 from itertools import product
 import numpy as np
-
+import logging
+import sys
 # Pandas print options
 np.set_printoptions(edgeitems=5, linewidth=170, suppress=True, precision=8)
 
+# Logger class
+logger = logging.getLogger('pertussis')
+logger.setLevel(logging.DEBUG)
+
+sh = logging.StreamHandler()
+formatter = logging.Formatter('%(levelname)-8s %(message)s')
+sh.setFormatter(formatter)
+sh.setLevel(logging.DEBUG)
+
+logger.addHandler(sh)
+# logger.propagate = False
+# dean_logger.info("DEAN")
+# print (logger.handlers)
 # Scenario
 _alpha_ap = [0.15, "like epsilon"]
 _omega_ap = [4, 30]

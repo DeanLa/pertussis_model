@@ -3,9 +3,10 @@ from numpy import cos, pi
 from scipy.stats import expon
 import pymc as pm
 import sys
-from pertussis import medlock, SCENARIO
-import logging
-from logging import warning as warn, info, error, debug
+# from pertussis import medlock, SCENARIO
+# import logging
+# from logging import warning as warn, info, error, debug
+from pertussis import *
 
 # Demographics
 # =====================================================================================================================
@@ -19,8 +20,8 @@ _ages = np.hstack((np.arange(0, 1, 2 / 12),  # First year: Every 2 months
 a_l = _ages[:-1]  # Lower limits
 a_u = _ages[1:]  # Upper limis
 a = N / (a_u - a_l)[:-1]
-print (_ages)
-print (a)
+# logger.debug("AGES: {}".format(_ages))
+# logger.debug("a: {}".format(a))
 # Constants
 C = np.genfromtxt('./data/mossong/medlock_avg_sym.csv', delimiter=',')  # Contact Matrix
 C = medlock(C, _ages)
@@ -30,8 +31,6 @@ C = medlock(C, _ages)
 delta = np.genfromtxt('./data/demographics/birth_rate.csv', delimiter=',',
                       skip_header=1, usecols=[3]) * N
 delta = np.pad(delta, (0, 100), 'edge')
-# print (delta / N)
-# print(delta)
 mu = np.genfromtxt('./data/demographics/death_rate.csv', delimiter=',',
                    skip_header=1)[:, 1:] * N  # * _O  # Death [] yearly
 mu = np.pad(mu, ((0, 100), (0, 0)), 'edge')
@@ -57,7 +56,7 @@ alpha_wp = 1  # Chance to be symptomatic from wP
 # Waning
 # Scenarios for omega_ap = | 4 y | 30 y |
 omega_ap = SCENARIO[scenario_number]['omega_ap'] * N  # Waning [6] as low as 4-12 years
-omega = (1 / 30000) * N  # Loss of immunity [1] 3e-5 est yearly [3] 1/30 yearly [6] as low as 7-20 years
+omega = (1 / 30) * N  # Loss of immunity [1] 3e-5 est yearly [3] 1/30 yearly [6] as low as 7-20 years
 omega_wp = (1 / 30) * N
 
 # Vaccines
@@ -75,14 +74,14 @@ epsilon_ap = (np.take(epsilon_ap, np.cumsum(vax_ap) - 1))  # Turn into vector
 
 vax_ap = coverage * vax_ap.astype(float)[:-1]  # Now multiplied by coverage
 vax_wp = np.in1d(a_u, [2 / 12, 4 / 12, 6 / 12, 1]).astype(float)[:-1]  # Hard coded on purpose - old policy
-print (vax_wp)
+logger.debug("vax_ap {}".format(vax_wp))
 if alpha_ap == "like epsilon":
     alpha_ap = (1 - epsilon_ap)
 # Susceptibility changes
 sc = [0, 1, 21, death]
 sc = np.array([sum(_ages[:-1] >= x) for x in sc])
 sc = sc[:-1] - sc[1:]
-
+# logger.debug(sc)
 # Recovery
 # =====================================================================================================================
 gamma_s = (1 / 25)  # Healing rate Symptomatic [1] 1/6 [3] 1/25
@@ -93,7 +92,7 @@ gamma_a = (1 / 8)  # Healing rate Asymptomatic [1] 16 days [3] 8
 def collect_state0(S0=0.2, Is0=1e-3, death=death):
     _pop = np.genfromtxt('./data/demographics/population_new.csv', delimiter=',',
                          skip_header=True, max_rows=1)[1:] * 1000
-    print(_pop.sum())
+    logger.debug(_pop.sum())
     # Compartments (State 0)
     S = S0 * _pop
     Vap = 0 * _pop
@@ -105,12 +104,6 @@ def collect_state0(S0=0.2, Is0=1e-3, death=death):
     return S, Vap, Vwp, Is, Ia, R
 
 
-# print (a_l, '  ', a_l.size)
-# print (a_u, '  ', a_u.size)
-# print (a_u - a_l, '  ', (a_u - a_l).size)
-# print (alpha_ap, omega_ap)
-
-# print (alpha_ap)
 # sys.exit("End of parameters")
 
 '''Supplement:
@@ -124,22 +117,6 @@ def collect_state0(S0=0.2, Is0=1e-3, death=death):
 [8] Pertussis_Sources_of_Infection_and_Routes_of.4
 # [] Mossong Contact Matrix
 
-Age Groups:
-0. 0 - 2m
-1. 2m - 4m
-2. 4m - 6m
-3. 6m - 1y
-4. 1y - 7y
-5. 7y-13y
-6. 13y-20y
-7. 20-25
-8. 25-30
-9. 30-35
-10. 35-40
-11. 40-45
-12. 45-55
-13. 55-65
-14. 65 +
 
 2016_05_17
 (1) Assuming 1 Vaccine with changing efficacies. Otherwise it's never ending if someone lost immunity on 2nd vaccine,
