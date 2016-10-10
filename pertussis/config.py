@@ -8,24 +8,31 @@ np.set_printoptions(edgeitems=5, linewidth=170, suppress=True, precision=8)
 # Logger class
 logger = logging.getLogger('pertussis')
 logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(levelname)-8s %(message)s\n')
 
 sh = logging.StreamHandler()
-formatter = logging.Formatter('%(levelname)-8s %(message)s')
 sh.setFormatter(formatter)
-sh.setLevel(logging.DEBUG)
+sh.setLevel(logging.INFO)
+
+fh = logging.FileHandler('./pertussis.log', mode='w')
+fh.setFormatter(formatter)
+fh.setLevel(logging.DEBUG)
 
 logger.addHandler(sh)
+logger.addHandler(fh)
+
 # logger.propagate = False
 # dean_logger.info("DEAN")
 # print (logger.handlers)
+
 # Scenario
-_alpha_ap = [0.15, "like epsilon"]
+_alpha_ap = [1, "like epsilon"]
 _omega_ap = [4, 30]
 _p = [1 / 250, 0.015]
 options = product(range(len(_alpha_ap)), range(len(_omega_ap)), range(len(_p)))
 # print (sorted([i for i in options]))
 #
-SCENARIO = {'main': {'alpha_ap': "like epsilon",
+SCENARIO = {'main': {'alpha_ap': "like epsilon div 2",
                      'omega_ap': 1 / 30,
                      'p': 1 / 100}}
 

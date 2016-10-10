@@ -121,19 +121,21 @@ def plot_stoch_vars(mcmc, which=None, exclude=None):
 
 
 def mu_chart(mu, data):
+    from pertussis import sc_ages
     from scipy.stats.mstats import mquantiles
-    n_months = mu.shape[-1]
+    n_iterations, n_months, n_groups = mu.shape # Assumes (iteration, month, group)
     x = 1998 + np.arange(0, n_months, 1) / 12
-    fig, axs = plt.subplots(4, np.ceil(J/4), figsize=(16, 16))
+    fig, axs = plt.subplots(3, int(np.ceil(n_groups/3)), figsize=(16, 16)) # Create J axes with 4 in a row
     axs = np.hstack(axs)
-    for i in range(J):
+    for i in range(n_groups):
         ax = axs[i]
-        q_mu = mu[:, i, :]
-        quants = mquantiles(q_mu, prob=[0.05, 0.95], axis=0)
+        q_mu = mu[:, :, i] # Takes group and all its lines
+        quants = mquantiles(q_mu, prob=[0.05, 0.95], axis=0) #5% 95% quantiles
         ax.fill_between(x, quants[0], quants[1], color='red', alpha=0.3, label="95% CI")
         ax.plot(x, q_mu.mean(axis=0), label='Model')
-        ax.plot(x, data[i, :], '--', label="Data")
-        ax.set_title('Age: {:.2f} - {:.2f}'.format(a_l[i], a_u[i]))
+        # ax.scatter(x, data[:, i], label="Data")
+        ax.plot(x, data[:, i], '--', label="Data")
+        ax.set_title('Age: {:.2f} - {:.2f}'.format(sc_ages[i], sc_ages[i+1]))
     axs[0].legend(loc='best')
 
     return fig, axs

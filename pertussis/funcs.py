@@ -9,7 +9,7 @@ def check(x=2):
 
 
 def beta(t, omega, phi):
-    if t >= 1903:
+    if t >= 1839:
         return cos((2 * pi) * (phi / omega + t / omega))
     else:
         return 0

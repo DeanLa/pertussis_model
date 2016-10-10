@@ -64,7 +64,7 @@ omega_wp = (1 / 30) * N
 # Policy
 _vax_ages = [2 / 12, 4 / 12, 6 / 12, 1, 7, 13]
 assert all(np.in1d(_vax_ages, _ages)), "Vaccine should happen on listed Age Group:\n {}".format(_ages)
-coverage = 1
+coverage = 0.95
 vax_ap = np.in1d(a_u, _vax_ages).astype(int)  # Currently holds indexes for efficacy
 
 # Efficacy
@@ -78,10 +78,11 @@ logger.debug("vax_ap {}".format(vax_wp))
 if alpha_ap == "like epsilon":
     alpha_ap = (1 - epsilon_ap)
 # Susceptibility changes
-sc = [0, 1, 21, death]
-sc = np.array([sum(_ages[:-1] >= x) for x in sc])
+sc_ages = [0, 1, 21, death]
+sc = np.array([sum(_ages[:-1] >= x) for x in sc_ages])
 sc = sc[:-1] - sc[1:]
-# logger.debug(sc)
+
+logger.debug(np.cumsum(sc))
 # Recovery
 # =====================================================================================================================
 gamma_s = (1 / 25)  # Healing rate Symptomatic [1] 1/6 [3] 1/25

@@ -26,25 +26,36 @@ def cases_yearly(path='./data/yearly.csv'):
     return data, years
 
 
-def cases_monthly(path='./data/_imoh/cases.csv'):
-    '''Loads Monthly Data per 1e5'''
+def cases_monthly(path='./data/_imoh/cases.csv', collapse = False):
+    '''Loads Monthly Data in total numbers
+    '''
     df = pd.read_csv(path)
-    try:
-        pop = pd.read_csv('./data/demographics/birth_rate.csv')
-    except:
-        logger.error("Can't find path to population by years")
-        return
-    pop['Y'] = pop['year']
-    pop = pop[['Y', 'population']]
-    pop.set_index('Y', inplace=True)
+    sc_len = len(sc)
+    for i in range(sc_len):
+        col = "sc_{}".format(sc_ages[i])
+        df[col] = (sc_ages[i] <= df['Age']) & (df['Age'] < sc_ages[i+1])
+        df[col] = df[col].astype(int)
     g = df.groupby(['Y', 'M'])
-    df = g.agg('count')[['Age', 'Dt']]
-    df = df.join(pop)
-    # Create per 100 k
-    data = (1e5 / 1e3) * df['Age'] / df['population']
+    df = g.agg('sum')#[['Age', 'Dt']]
+    data = df.ix[:,-sc_len:]
+    # print (len(data))
+    # sys.exit('inside data/cases_monthly')
+
     months = df.index.get_level_values(level=0).values + df.index.get_level_values(level=1).values / 12
-    logger.info("{} Monthly data values".format(len(months)))
+    logger.info("{x[0]} Monthly data values on {x[1]} age groups".format(x=data.shape))
+    if collapse:
+        data = data.sum(axis=1)
     return data.values, months
+    # try:
+    #     pop = pd.read_csv('./data/demographics/birth_rate.csv')
+    # except:
+    #     logger.error("Can't find path to population by years")
+    #     return
+    # pop['Y'] = pop['year']
+    # pop = pop[['Y', 'population']]
+    # pop.set_index('Y', inplace=True)
+    # df = df.join(pop)
+    # Create per 100 k
 
 
 def cases_month_age(path='./data/_imoh/cases.csv'):
