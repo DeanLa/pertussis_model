@@ -75,8 +75,14 @@ epsilon_ap = (np.take(epsilon_ap, np.cumsum(vax_ap) - 1))  # Turn into vector
 vax_ap = coverage * vax_ap.astype(float)[:-1]  # Now multiplied by coverage
 vax_wp = np.in1d(a_u, [2 / 12, 4 / 12, 6 / 12, 1]).astype(float)[:-1]  # Hard coded on purpose - old policy
 logger.debug("vax_ap {}".format(vax_wp))
-if alpha_ap == "like epsilon":
-    alpha_ap = (1 - epsilon_ap)
+if alpha_ap[:4] == "like":
+    #logger.info(alpha_ap[4:])
+    
+    alpha_ap = float(alpha_ap[4:])*(1 - epsilon_ap)
+    assert all(alpha_ap<=1), "Some alpha_ap values larger than 1"
+#logger.info(alpha_ap)
+
+# sys.exit('params')
 # Susceptibility changes
 sc_ages = [0, 1, 21, death]
 sc = np.array([sum(_ages[:-1] >= x) for x in sc_ages])
