@@ -2,31 +2,35 @@ from itertools import product
 import numpy as np
 import logging
 import sys
+from datetime import datetime
 # Pandas print options
-np.set_printoptions(edgeitems=5, linewidth=170, suppress=True, precision=8)
+np.set_printoptions(precision=4, suppress=True)
+
+file_name = str(datetime.now()).replace(" ","-").replace(":","-")
+file_name = file_name[:file_name.find('.')]+'.log'
 
 # Logger class
 logger = logging.getLogger('pertussis')
 logger.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(levelname)-8s %(message)s\n')
+formatter = logging.Formatter('%(levelname)-s, %(message)s')
 
 sh = logging.StreamHandler()
 sh.setFormatter(formatter)
-sh.setLevel(logging.WARN)
+sh.setLevel(logging.CRITICAL)
 
-fh = logging.FileHandler('./pertussis.log', mode='w')
+fh = logging.FileHandler('./log/'+file_name, mode='w')
 fh.setFormatter(formatter)
 fh.setLevel(logging.DEBUG)
 
 
-progress = logging.getLogger('progress')
-pb = logging.FileHandler('./progress.log', mode='w')
-pb.setFormatter(formatter)
-pb.setLevel(logging.DEBUG)
+# progress = logging.getLogger('progress')
+# pb = logging.FileHandler('./progress.log', mode='w')
+# pb.setFormatter(formatter)
+# pb.setLevel(logging.DEBUG)
 
 logger.addHandler(sh)
 logger.addHandler(fh)
-progress.addHandler(pb)
+# progress.addHandler(pb)
 
 # logger.propagate = False
 # dean_logger.info("DEAN")
@@ -40,7 +44,7 @@ options = product(range(len(_alpha_ap)), range(len(_omega_ap)), range(len(_p)))
 # print (sorted([i for i in options]))
 #
 SCENARIO = {'main': {'alpha_ap': "like1.5",
-                     'omega_ap': 1 / 20, # Years
+                     'omega_ap': 1 / 18, # Years
                      'p': 1 / 100}}
 
 for i, option in enumerate(sorted(options)):

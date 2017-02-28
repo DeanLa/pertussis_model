@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-import pymc as pm
+# import pymc as pm
 import numpy as np
 from pertussis import a_l, a_u, J
 
@@ -137,5 +137,79 @@ def mu_chart(mu, data):
         ax.plot(x, data[:, i], '--', label="Data")
         ax.set_title('Age: {:.2f} - {:.2f}'.format(sc_ages[i], sc_ages[i+1]))
     axs[0].legend(loc='best')
+
+    return fig, axs
+
+# MCMC
+def plot_traces(list_of_tr, names=None):
+    if names is None:
+        names = np.arange(len(list_of_tr))
+    # print (names)
+    # Plot the variables
+    # Initialize data frame for later analysis
+    from scipy.stats.mstats import mquantiles
+    # tr_len = mcmc.trace(stoch[0])[:, None].shape[0]
+    # Height is determined by number of variables
+    h = 3 * len(list_of_tr)
+    fig, axs = plt.subplots(len(list_of_tr), 2, figsize=(16, h))
+
+    for i, tr in enumerate(list_of_tr):
+        try:
+            # print str(tr)
+            # Prepare Values
+            tr_val = tr
+            quants = mquantiles(tr_val, prob=[0.025, 0.25, 0.5, 0.75, 0.975])
+
+            # Plot
+            ### Left: Histogram
+            h = axs[i, 0].hist(tr_val, histtype='stepfilled',
+                               bins=50, label=str(names[i]), alpha=0.9)
+            m = max(h[0])
+            # m=1
+            axs[i, 0].fill_betweenx([0, m + 5], quants[0], quants[-1], color='lightgreen')
+            axs[i, 0].fill_betweenx([0, m + 5], quants[1], quants[-2], color='darkgreen')
+            # axs[i, 0].set_title("{var} = {value:.4f} [{lci:.4f}, {hci:.4f}] ({tmp:.4f})".format(var=str(names[i]),
+            #                                                                                     tmp=tr_val.mean(),
+            #                                                                                     value=quants[2],
+            #                                                                                     lci=quants[0],
+            #                                                                                     hci=quants[-1]))
+            axs[i, 0].set_title("{var} = {value:.4f} [{lci:.4f}, {hci:.4f}] ({tmp:.4f})".format(var=names[i],
+                                                                                                tmp=tr_val.mean(),
+                                                                                                value=quants[2],
+                                                                                                lci=quants[0],
+                                                                                                hci=quants[-1]))
+            # h = axs[i, 0].hist(tr_val, histtype='stepfilled',
+            #                    bins=50, label=str(names[i]), alpha=0.6)
+
+            axs[i, 0].set_xticks(axs[i, 0].get_xticks()[::2])  # X 0
+            axs[i, 0].set_yticks(axs[i, 0].get_yticks()[::2])  # Y 0
+            axs[i, 0].set_ylim([0, m + 5])
+            # print axs[i,1].get_yticks()[::2]
+            ### Right: Trace
+            l = range(len(tr_val))
+            axs[i, 1].plot(l, tr_val)
+            axs[i, 1].set_xticks(axs[i, 1].get_xticks()[::2])  # X 1
+            axs[i, 1].set_yticks(axs[i, 1].get_yticks()[::2])  # Y 1
+            axs[i, 1].set_xlim([0, l[-1]])
+
+        except Exception as e:
+            print (e)
+    # fig.set_tight_layout
+    fig.suptitle("Posterior Distribution <|> Convergence")
+    return fig, axs
+
+def plot_monthly(x_axis, data, model):
+    fig, axs = plt.subplots(1, 2, figsize=(18, 8))
+    # print(z.shape)
+    labels = ['0-1', '1-21', '21+']
+    ax = axs[0]
+    for i, l in enumerate(labels):
+        ax.plot(x_axis, model[i, :], label=l)
+        ax.scatter(x_axis, data[i, :])
+    ax.legend()
+
+    ax = axs[1]
+    ax.plot(x_axis, model.sum(axis=0), color='grey')
+    ax.scatter(x_axis, data.sum(axis=0), c='grey')
 
     return fig, axs
