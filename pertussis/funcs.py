@@ -2,18 +2,19 @@ import numpy as np
 from numpy import cos, pi
 from itertools import chain
 import pickle
-
+from scipy.stats import pearsonr
 
 def check(x=2):
     print("T")
     print(x)
 
 
-def beta(t, omega, phi, rho=0):
-    if t >= 1900:
-        return rho + cos((2 * pi * t / omega) + phi)
+def beta(t, omega, phi, rho=0, zero_year=1998, with_cos=True):
+    if with_cos:
+        return rho + cos((2 * pi * (t - zero_year) / omega) + phi)
     else:
-        return 0
+        # print ('no cos')
+        return rho*t
 
 
 def pack_flat(Y):
@@ -60,20 +61,20 @@ def expand_time(t, start, step):
     return (t - start) * step
 
 
-def reduce_month(vec):
-    months = (31, 28, 31, 30,
-              31, 30, 31, 31,
-              30, 31, 30, 31)
-    if vec.ndim == 1:
-        l = vec.size
-        assert l % 365 == 0, "Vector must divide with 365. Current modulo: {}".format(l % 365)
-        months = np.tile(months, l // 365)
-        months = np.cumsum(months)
-        res = np.split(vec, months[:-1])
-        res = np.array([a.sum() for a in res])
-        return res
-    if vec.ndim == 2:
-        return np.apply_along_axis(reduce_month, 1, vec)
+# def reduce_month(vec):
+#     months = (31, 28, 31, 30,
+#               31, 30, 31, 31,
+#               30, 31, 30, 31)
+#     if vec.ndim == 1:
+#         l = vec.size
+#         assert l % 365 == 0, "Vector must divide with 365. Current modulo: {}".format(l % 365)
+#         months = np.tile(months, l // 365)
+#         months = np.cumsum(months)
+#         res = np.split(vec, months[:-1])
+#         res = np.array([a.sum() for a in res])
+#         return res
+#     if vec.ndim == 2:
+#         return np.apply_along_axis(reduce_month, 1, vec)
 
 
 def reduce_year(vec):
@@ -136,10 +137,15 @@ def binom_likelihood(model, data, p):
 
 
 def log_liklihood(model, data, sigma=1):
+    # print (data.shape, model.shape)
+    # data[data>150] = model[data>150]
+    # print(data)
     diff = (model - data) ** 2
-    LL = -diff.sum() / (2 * sigma ** 2)
+    diff[data>150] = 0
+    LL = -diff / (2 * sigma ** 2)
+
     # print (LL)
-    return LL
+    return LL.sum()
 
 
 def log_ratio(model_star, model_current, data, sigma=1):
@@ -169,20 +175,29 @@ def gelman_rubin(chains):
     B = np.zeros(params)  # Init for values of params
     W = np.zeros(params)  # Init for values of parmas
     for i in range(params):
-        means = [np.mean(chain) for chain in chains]
-        variances = [np.var(chain) for chain in chains]
-        B[i] = np.var(means)
+        means = [np.mean(chain[:, i]) for chain in chains] 
+        mean_of_means = np.mean(means)
+        variances = [np.var(chain[:, i]) for chain in chains]
+        B[i] = N * np.var(means)
+        # B = (N / M - 1) * 
         W[i] = np.mean(variances)
-    V = ((N - 1) / N) * W + ((M + 1) / (M * N)) * B
-    return V
+    V =  (1 - (1/N)) * W + (1 / N) * B
+    R = np.sqrt(V/W)  
+    # V = ((N - 1) / N) * W + ((M + 1) / (M * N)) * B
+    return R
 
 
-
+# def reduce_month(y, r, to_yearly=False):
+#     if to_yearly == True:
+#         r *= 12
+#     new_y = np.split(y, np.cumsum(sc)[:-1])
+#     new_y = [np.sum(yi.reshape(-1, r), axis=1) for yi in new_y]
+#     return new_y
 
 
 def save_mcmc(obj, path='./'):
     name = obj['name']
-    path = path+name+'.pkl'
+    path = path + name + '.pkl'
     with open(path, 'wb') as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
@@ -191,4 +206,22 @@ def load_mcmc(path='./mcmc.pkl'):
     with open(path, 'rb') as f:
         return pickle.load(f)
 
+def autocorr(chain, k):
+    r,_ = pearsonr(chain[k:],chain[:-k])
+    return abs(r)
 
+def autocorr_function(chain, max_k):
+    ret = np.zeros(max_k)
+    for k in range(1,max_k):
+        ret[k-1] = autocorr(chain, k)
+    return ret
+
+def ess(mcmc):
+    chain = mcmc['chain'][mcmc['tally']:, :]
+    N, params = chain.shape
+    acf = np.zeros(params)
+    for i in range(params):
+        acf[i] += autocorr_function(chain[:, i], max_k=20).sum()#autocorr(chain[:, i], k)
+        # for k in range(1, 20):
+        #     acf[i] += autocorr(chain[:, i], k)
+    return N / (1 + 2 * acf)

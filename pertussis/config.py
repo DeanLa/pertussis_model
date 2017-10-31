@@ -4,11 +4,11 @@ import logging
 import sys
 from datetime import datetime
 # Pandas print options
-np.set_printoptions(precision=4, suppress=True)
+np.set_printoptions(precision=4, suppress=True, linewidth=80)
 
 file_name = str(datetime.now()).replace(" ","-").replace(":","-")
 file_name = file_name[:file_name.find('.')]+'.log'
-
+print (file_name)
 # Logger class
 logger = logging.getLogger('pertussis')
 logger.setLevel(logging.DEBUG)

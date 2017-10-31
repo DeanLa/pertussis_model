@@ -24,11 +24,11 @@ def difference_model(state_0, start, end,
     alpha_ap = (1 - epsilon_ap) / e_ap
 
     # Initiate return matrices and start with values from state_0
-    S, Vap, Vwp, Is, Ia, R, Healthy, All, New = [np.zeros((J, num_months)) for _ in range(9)]  # 9 Matrices
+    S, Vap, Vwp, Is, Ia, R, Healthy, All, Shots, New = [np.zeros((J, num_months)) for _ in range(10)]  # 9 Matrices
     for i, c in enumerate([S, Vap, Vwp, Is, Ia, R]):
         c[:, 0] = state_0[i]
         All[:, 0] += c[:, 0]
-    #************************************************* Start Loop ***************************************
+    # ************************************************* Start Loop ***************************************
     for t, T in enumerate(timeline[1:], start=1):
         demographic_change = 2300 >= T >= data_start
 
@@ -36,18 +36,21 @@ def difference_model(state_0, start, end,
                     max(0, int(T) - data_start))  # 2014 where it ends
         # Compartments and Derivatives
         A = All[:, t - 1].sum()
-        if A > 9e6:
+        if A > 15e6:
+            print("TOO MUCH", T)
             logger.setLevel(logging.INFO)
             logger.error("Too much people at time: {:.2f}".format(T))
             # return [S, Vap, Vwp, Is, Ia, R, Healthy, All, New]
+            A
             return no_likelihood
         # nS, nVap, nVwp, nIs, nIa, nR = [c[:, t - 1] / A for c in [S, Vap, Vwp, Is, Ia, R]]
-        nS = np.maximum(1e-9, S[:, t - 1] / A)
-        nVap = np.maximum(1e-9, Vap[:, t - 1] / A)
-        nVwp = np.maximum(1e-9, Vwp[:, t - 1] / A)
-        nIs = np.maximum(1e-9, Is[:, t - 1] / A)
-        nIa = np.maximum(1e-9, Ia[:, t - 1] / A)
-        nR = np.maximum(1e-9, R[:, t - 1] / A)
+        nS = np.maximum(0, S[:, t - 1] / A)
+        nVap = np.maximum(0, Vap[:, t - 1] / A)
+        nVwp = np.maximum(0, Vwp[:, t - 1] / A)
+        nIs = np.maximum(0, Is[:, t - 1] / A)
+        nIa = np.maximum(0, Ia[:, t - 1] / A)
+        nR = np.maximum(0, R[:, t - 1] / A)
+        nA = nS + nVap + nVwp + nIs + nIa + nR
         # Initialize return values
         for i, c in enumerate([S, Vap, Vwp, Is, Ia, R]):
             c[:, t] = c[:, t - 1] / A
@@ -55,12 +58,14 @@ def difference_model(state_0, start, end,
         ## Helpers
         nI = nIa + nIs
         beta_ = 0 + f * beta(T, om, phi, rho)
-        beta_ = np.where(beta_ >=1e-9, beta_, 1e-9)  # Take only non-negative valuese
+        # 0 + cos((2 * pi * (t - zero_year) / omega) + phi)
+        # rho + f*cos(...)
+        # f * (rho + cos(...)) = (f1/f2/f3) * rho + f*cos(...)
+
+        beta_ = np.where(beta_ >= 1e-9, beta_, 1e-9)  # Take only non-negative valuese
         IC = nI.dot(C)
-        lambda_ = beta_ * IC  # Needs to be normalized
+        lambda_ = beta_ * IC
         if any(lambda_ < 0):
-            # "{}\nlambda {}\n>0 {}\nbeta {}\n IC {} \n I {} \n\n".format([T, t], lambda_, lambda_ >= -0., beta_,
-            #                                                             state_0, nI))
             logger.warning('0 likelihood')
             logger.error('0 likelihood lambda<0')
             logger.error("rho {}\nomega {}\nphi {}\nf {} \n\n".format(rho, om, phi, f))
@@ -78,6 +83,8 @@ def difference_model(state_0, start, end,
         if any(S[:, t] < 0):
             logger.warning("S < 0 at {} \n {}".format(T, S[:, t]))
             logger.setLevel(logging.ERROR)
+            # return no_likelihood
+            # print ("S < 0")
         ##### Vaccination
         if data_start <= T < 1957:
             S[1:, t] += r * a * nS[:-1]  # IN
@@ -87,7 +94,8 @@ def difference_model(state_0, start, end,
         if T >= 2002:  # Begin aP
             Vap[1:, t] += r * vax_ap * a * nS[:-1]  # IN: Age and vaccinate aP from S classes
             S[1:, t] += r * (1 - vax_ap) * a * nS[:-1]  # IN: Age from previous age no vaccine
-
+            Shots[1:, t] += r * vax_ap * a * nA[:-1]
+            # Shots[1:, t] += r * np.ones(26) * a * nA[:-1]
         Vap[:, t] -= r * lambda_ * e_ap * nVap  # OUT: Getting sick (reduced by efficacy)
         Vwp[:, t] -= r * lambda_ * e_wp * nVwp  # OUT: Getting sick (reduced by efficacy)
         Vap[:, t] -= r * omega_ap * nVap  # OUT: Waning to S
@@ -142,19 +150,20 @@ def difference_model(state_0, start, end,
                 c[:, t] -= mu_current * c[:, t - 1]
                 c[:, t] += add_aliyah
             All[:, t] += c[:, t]
+        Shots[:, t] *= A
         New[:, t] *= A
     Healthy = S + Vap + Vwp
     logger.setLevel(logging.INFO)
     if full_output:
-        return [S, Vap, Vwp, Is, Ia, R, Healthy, All, New]
+        return [S, Vap, Vwp, Is, Ia, R, Healthy, All, Shots, New]
     # print (New.shape)
     return New
 
 
 def run_model(state_0, start, end,
-              om, phi, rho, f1, f2, f3, e,
+              om, phi, rho, f1, f2, f3, e=1,
               r=3, r_0=20, years_prior=10):
-    no_likelihood = -np.inf * np.ones((3,192))
+    no_likelihood = -np.inf * np.ones((3, 192)), -np.inf * np.ones(270)
     # fix and set params
     f = np.concatenate((nums(f1, sc[0]), nums(f2, sc[1]), nums(f3, sc[2])))
     phi = phi % (2 * np.pi)
@@ -176,25 +185,28 @@ def run_model(state_0, start, end,
         return no_likelihood
     # If under 5 are not very 4/6 in the R comp. return no likelihood
     # Compute where the cut is
-    tmp_cut = np.arange(int(r/N * (1953 - start)),
+    tmp_cut = np.arange(int(r / N * (1953 - start)),
                         int(r / N * (1957 - start)))
-    # Compute Total in the point, and R in the point
+    # Compute Total in the point, and R in the point - needed age is 5 (point 9)
     R, A = y[5], y[7]
-    tmp_R = R[9,tmp_cut]
-    tmp_A = A[9,tmp_cut]
+    tmp_R = R[9, tmp_cut]  # 9 is the needed age group
+    tmp_A = A[9, tmp_cut]
     mean_sick = (tmp_R / tmp_A).mean()
     # exit()
     # Test condition
-    if  mean_sick<= 0.7:
+    if mean_sick <= 0.7:
         logger.error('Not enough sick kids, {:.2f}'.format(mean_sick))
         return no_likelihood
-    y = y[-1]
+    # Save last state
+    state_z = [yi[:, -1] for yi in y]
+    state_z = np.concatenate(state_z)
+    y = y[-1]  # NEW SICK is the last one
     # Take result and sum values according to susceptibility
     y = np.split(y, np.cumsum(sc)[:-1])
-    y = [yi.sum(axis=0)/A.sum(axis=0) for yi in y]
+    y = [yi.sum(axis=0) / A.sum(axis=0) for yi in y]
     # print((y[1]/A.sum(axis=0)).shape)
     y = [np.sum(yi.reshape(-1, r), axis=1) for yi in y]
-    y = np.array(y) * 10**5
+    y = np.array(y) * 10 ** 5
     # y is only new sick people on 3 age (susceptibiliy change) groups: 3,192
 
     # Monthly
@@ -210,10 +222,12 @@ def run_model(state_0, start, end,
     # yearly = np.sum(yearly.reshape(-1, 12), axis=1)
     # yearly = yearly[start_ix:end_ix]
     # return (monthly, yearly)  # This is 3 lists of 192 Monthly points and 48 yearly
-    return monthly
+    return monthly, state_z
 
 
 def init_mcmc(name, state_0, r_start, r_end, *params, **kwargs):
+    import copy
+    extra = copy.deepcopy(kwargs)
     mcmc = {'name': name}  # Name- also name of file
 
     # Constatns
@@ -222,41 +236,55 @@ def init_mcmc(name, state_0, r_start, r_end, *params, **kwargs):
     mcmc['state_0'] = state_0
     mcmc['start'] = r_start
     mcmc['end'] = r_end
-    mcmc['names'] = ['omega','phi','rho','f1','f2','f3','e']
 
+    mcmc['active_params'] = np.array(extra.get('active_params', np.arange(6)))
+    apsl = mcmc['active_params']
+    mcmc['names'] = extra.get('names', ['omega', 'phi', 'rho', 'f1', 'f2', 'f3', 'e'])
+    # mcmc['names'] = np.array(mcmc['names'])[apsl]
     # Initial Values
-    mcmc['values'] = np.array(params)  # CURRENT values ########################################
-    M_now = run_model(state_0, r_start, r_end, *mcmc['values'])
-    mcmc['y_now_M'] = M_now[None, :, :]  # CURRENT values ########################################
-    # mcmc['y_now_Y'] = Y_now.copy()  # CURRENT values ########################################
+    mcmc['values'] = np.array(params)[apsl]# CURRENT values ########################################
+    # vals = np.array(params)
+    # vals[apsl] = mcmc['values'].copy()
+    print(mcmc['values'], params)
+    M_now, state_z = run_model(state_0, r_start, r_end, *params)
+    mcmc['y_now_M'] = M_now.copy()#[None, :, :]  # CURRENT values ########################################
     mcmc['active'] = True
 
     # Model Soecific
-    mcmc['d'] = len(mcmc['values'])
-    mcmc['cov'] = np.diag([0.1, np.pi / 10, 0.2, 0.04, 0.0004, 0.0004, 0.05])
+    mcmc['d'] = len(apsl)#len(mcmc['names'])
+    # mcmc['cov'] = np.diag((1/10, np.pi / 10, 0.5, 0.000005, 0.000005, 0.000005, 0.25 / 10))
     # mcmc['cov'] /= 100
     mcmc['scaling_factor'] = np.array([2.4 / np.sqrt(mcmc['d'])])
-    mcmc['sd'] = mcmc['scaling_factor'] ** 2 * mcmc['cov']
 
     # Chains and Metrics
-    mcmc['y_hat_M'] = mcmc['y_now_M'].copy()  # CHAIN: y values for proposed set (shape like data points)
+    mcmc['y_hat_M'] = mcmc['y_now_M'].copy()[None, :, :]  # CHAIN: y values for proposed set (shape like data points)
     # mcmc['y_hat_Y'] = mcmc['y_now_Y'].copy()  # CHAIN: y values for proposed set (shape like data points)
     mcmc['chain'] = mcmc['values'].copy()  # CHAIN: proposed set
     mcmc['guesses'] = mcmc['values'].copy()  # CHAIN: proposed set
-    mcmc['ll'] = np.array([-np.inf, -np.inf])
+
     mcmc['accepted'] = np.array([1])
-    mcmc['rates'] = np.zeros(mcmc['d'])
+    mcmc['rates'] = np.array([-1])
     mcmc['max_likelihood'] = -np.inf
     mcmc['gelman_rubin'] = np.zeros(mcmc['d'])
     mcmc['change'] = np.array([-1])
+    mcmc['initial_guess'] = np.array(params)
+    mcmc['tally'] = 0
+    mcmc = {**mcmc, **extra}
 
-
-    mcmc = {**mcmc, **kwargs.copy()}
+    # After Uniting
+    # State Z
+    mcmc['state_z'] = state_z
+    # ll_now = log_liklihood(mcmc['y_now_M'], mcmc['datax'], mcmc['sigma'])
+    ll_now = log_liklihood(M_now, mcmc['datax'], mcmc['sigma'])
+    mcmc['ll'] = np.array([-np.inf, ll_now])
+    # SD
+    mcmc['cov'] = mcmc['cov'][apsl,:][:,apsl]
+    mcmc['sd'] = mcmc['scaling_factor'] ** 2 * mcmc['cov']
     return mcmc
 
 
 def make_model(data1, data2, state_0, r_start, r_end):
-    '''data 1: monthely on 3 groups
+    '''data 1: monthly on 3 groups
     '''
     import pymc as pm
     om = pm.Normal('om', 4, 1 / 0.5 ** 2, value=4)

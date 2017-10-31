@@ -7,7 +7,6 @@ import sys
 # import logging
 # from logging import warning as warn, info, error, debug
 from pertussis import *
-
 # Demographics
 # =====================================================================================================================
 # Age Groups
@@ -29,6 +28,11 @@ a = N / (a_u - a_l)[:-1]
 C = np.genfromtxt('./data/mossong/medlock_avg_sym.csv', delimiter=',')  # Contact Matrix
 C = medlock(C, _ages)
 C *= (365 * N)
+C[0:6,6:10] = 584
+C[6:10,0:6] = 584
+# print (C)
+# Fix
+# quit()
 
 # Birth and Death
 # delta = np.ones(1100) * N / 75
@@ -76,12 +80,13 @@ _vax_ages = [2 / 12, 4 / 12, 6 / 12, 1, 7, 13]
 assert all(np.in1d(_vax_ages, _ages)), "Vaccine should happen on listed Age Group:\n {}".format(_ages)
 coverage = 0.95
 vax_ap = np.in1d(a_u, _vax_ages).astype(int)  # Currently holds indexes for efficacy
-
+# print (vax_ap.shape)
 # Efficacy
 epsilon_wp = 0.99
 epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
 epsilon_ap = (np.take(epsilon_ap, np.cumsum(vax_ap) - 1))  # Turn into vector
-
+# print (epsilon_ap)
+# exit()
 vax_ap = coverage * vax_ap.astype(float)[:-1]  # Now multiplied by coverage
 vax_wp = np.in1d(a_u, [2 / 12, 4 / 12, 6 / 12, 1]).astype(float)[:-1]  # Hard coded on purpose - old policy
 logger.debug("vax_ap {}".format(vax_wp))
