@@ -2,9 +2,13 @@ z_*
 MCMC.txt/
 data/_imoh/
 output/
-img/
 *.png
-
+mcmc*.pkl
+/chains/
+/simulations/
+/tests/
+.dropbox
+/log/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -67,3 +71,5 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+/desktop.ini
+.idea
