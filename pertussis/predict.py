@@ -307,6 +307,20 @@ def simulate_future(simulation, iterations=1000, r=3):
 def compare_policies(simulation):
     pass
 
+def take_subsets(mcmc):
+    tally = mcmc['tally']
+    chain = mcmc['chain'][tally:,:]
+    # Pick Chains for Simulation
+    l = len(chain)
+    chain_ess = ess(mcmc)
+    print ('Effective sample size: {}'.format(chain_ess))
+    thinning = (l // chain_ess).max().astype(int)
+    mcmc['state_z_subset'] = mcmc['state_z'][tally::thinning, :]
+    mcmc['chain_subset'] = mcmc['chain'][tally::thinning, :]
+    cut = mcmc['state_z_subset'].sum(axis=1) > 0
+    mcmc['chain_subset'] = mcmc['chain_subset'][cut, :]
+    mcmc['state_z_subset'] = mcmc['state_z_subset'][cut, :]
+    print ('Subset length: {}'.format(len(mcmc['chain_subset'])))
 
 def test():
     policy1 = init_policy('test_default')
@@ -325,3 +339,18 @@ def test():
     exit()
     print(policy1['picks'])
     print(policy2['picks'])
+
+def create_pairwise(simulation):
+    policies = simulation['policies']
+    default = policies[0]
+    metric_names = ['sick', 'hospital', 'vaccines']
+    age_names = ['0-1', '1-21', '21+']
+    # Make differences from default
+    for policy in simulation['policies']:
+        policy['sick_diff'] = np.array(policy['sick']) - np.array(default['sick'])
+        policy['hospital_diff'] = np.array(policy['hospital']) - np.array(default['hospital'])
+        policy['vaccines_diff'] = np.array(policy['vaccines']) - np.array(default['vaccines'])
+        policy['ratio'] = (np.array(policy['sick'])).sum(axis=1) / (np.array(policy['vaccines'])).sum(axis=1)
+        # IMPORTANT: Default has to be first!!!!!
+        #     policy['ratio_diff'] = policy['ratio'] - default['ratio']
+        policy['ratio_diff'] = np.array(policy['sick_diff']).sum(axis=1) / np.array(policy['vaccines']).sum(axis=1)

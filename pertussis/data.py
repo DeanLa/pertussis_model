@@ -54,10 +54,10 @@ def cases_monthly(path='./data/_imoh/cases.csv', collapse=False, per100k = True)
     g = df.groupby(['Y', 'M'])
     df = g.agg('sum')  # [['Age', 'Dt']]
     data = df.ix[:, -sc_len:]
-    data = data / p # Real cases after involving reporting rate
     months = df.index.get_level_values(level=0).values + df.index.get_level_values(level=1).values / 12
     logger.info("{x[0]} Monthly data values on {x[1]} age groups".format(x=data.shape))
     data = data.values.T
+    data = data / p # Real cases after involving reporting rate
     if collapse:
         data = data.sum(axis=1)
     if per100k:
@@ -68,7 +68,7 @@ def cases_monthly(path='./data/_imoh/cases.csv', collapse=False, per100k = True)
         print (pop.shape, data.shape)
         data /= pop
         data *= 10**5
-
+    # exit()
     return data, months
 
 

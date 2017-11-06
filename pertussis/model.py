@@ -282,76 +282,76 @@ def init_mcmc(name, state_0, r_start, r_end, *params, **kwargs):
     mcmc['sd'] = mcmc['scaling_factor'] ** 2 * mcmc['cov']
     return mcmc
 
-
-def make_model(data1, data2, state_0, r_start, r_end):
-    '''data 1: monthly on 3 groups
-    '''
-    import pymc as pm
-    om = pm.Normal('om', 4, 1 / 0.5 ** 2, value=4)
-    # om.use_step_method(pm.Metropolis, sd_proposal=0.05)
-    phi = pm.Uniform('phi', -np.pi, np.pi, value=0)
-    f_top = 0.1
-    f1 = pm.Uniform('f1', 0.001, f_top, value=0.05)
-    f2 = pm.Uniform('f2', 0.001, f_top, value=0.05)
-    f3 = pm.Uniform('f3', 0.001, f_top, value=0.05)
-    state_0 = state_0
-    fs = pm.Container([f1, f2, f3])
-
-    @pm.deterministic
-    def maxf(fs=fs):
-        return np.max(fs)
-
-    # rho = pm.Uniform('rho', np.max(fs), 2 * f_top, value=0.1)
-    rho = pm.Uniform('rho', maxf + 0.01, f_top, value=0.09)
-
-    @pm.deterministic
-    # def sim(rho=rho, om=om, phi=phi, f1=f1, f2=f2, f3=f3, state_0=state_0):
-    def sim(rho=rho, om=om, phi=phi, fs=fs, state_0=state_0):
-        f = np.concatenate((nums(fs[0], sc[0]), nums(fs[1], sc[1]), nums(fs[2], sc[2])))
-        years_prior = 10
-        y_0 = difference_model(state_0, r_start - years_prior, r_start,
-                               rho, om, phi, f,
-                               r=20, full_output=True)
-        if type(y_0) != list:
-            return -np.inf * np.ones((3, 192))
-        state_0 = [yi[:, -1] for yi in y_0]
-        r = 3
-        y = difference_model(state_0, r_start, r_end,
-                             rho, om, phi, f,
-                             r=r)
-
-        # Take result and sum values according to susceptibility
-        # print(y.shape)
-        y = np.split(y, np.cumsum(sc)[:-1])
-        y = [yi.sum(axis=0) for yi in y]
-        y = [np.sum(yi.reshape(-1, r), axis=1) for yi in y]
-        y = np.array(y)
-        return y  # This is 3 lists of 192 Monthly points
-
-    @pm.deterministic
-    def mu1(sim=sim):
-        '''gets monthly data on 3 age groups. Slices to relevant
-        data months'''
-        # Slices relevant for months data
-        start_ix = (1998 - r_start) * 12
-        end_ix = (2014 - r_start) * 12
-        ret = sim[:, start_ix:end_ix]
-        return ret
-        # Reduce y to monthly data and take only 1998-2014
-        # res = reduce_month(y)[:, start_ix:end_ix]
-        # logger.info(res.shape)
-        # logger.info(data.shape)
-
-    # @pm.deterministic
-    # def mu2(sim=sim):
-    #     # start_ix = 1957 - r_start
-    #     # end_ix = 2014 - r_start
-    #     y = sim.sum(axis=0)
-    #     y = np.sum(y.reshape(-1, 12), axis=1)
-    #     return y
-
-    Y1 = pm.Normal('Y1', mu=mu1 * p, tau=1 / 50 ** 2, observed=True, value=data1)
-    # Y2 = pm.Binomial('Y2', n=mu2, p=p, observed=True, value=data2)
-
-    return locals()
-    # return ([rho, om, phi, f, mu1, mu2, Y1, Y2])
+#
+# def make_model(data1, data2, state_0, r_start, r_end):
+#     '''data 1: monthly on 3 groups
+#     '''
+#     import pymc as pm
+#     om = pm.Normal('om', 4, 1 / 0.5 ** 2, value=4)
+#     # om.use_step_method(pm.Metropolis, sd_proposal=0.05)
+#     phi = pm.Uniform('phi', -np.pi, np.pi, value=0)
+#     f_top = 0.1
+#     f1 = pm.Uniform('f1', 0.001, f_top, value=0.05)
+#     f2 = pm.Uniform('f2', 0.001, f_top, value=0.05)
+#     f3 = pm.Uniform('f3', 0.001, f_top, value=0.05)
+#     state_0 = state_0
+#     fs = pm.Container([f1, f2, f3])
+#
+#     @pm.deterministic
+#     def maxf(fs=fs):
+#         return np.max(fs)
+#
+#     # rho = pm.Uniform('rho', np.max(fs), 2 * f_top, value=0.1)
+#     rho = pm.Uniform('rho', maxf + 0.01, f_top, value=0.09)
+#
+#     @pm.deterministic
+#     # def sim(rho=rho, om=om, phi=phi, f1=f1, f2=f2, f3=f3, state_0=state_0):
+#     def sim(rho=rho, om=om, phi=phi, fs=fs, state_0=state_0):
+#         f = np.concatenate((nums(fs[0], sc[0]), nums(fs[1], sc[1]), nums(fs[2], sc[2])))
+#         years_prior = 10
+#         y_0 = difference_model(state_0, r_start - years_prior, r_start,
+#                                rho, om, phi, f,
+#                                r=20, full_output=True)
+#         if type(y_0) != list:
+#             return -np.inf * np.ones((3, 192))
+#         state_0 = [yi[:, -1] for yi in y_0]
+#         r = 3
+#         y = difference_model(state_0, r_start, r_end,
+#                              rho, om, phi, f,
+#                              r=r)
+#
+#         # Take result and sum values according to susceptibility
+#         # print(y.shape)
+#         y = np.split(y, np.cumsum(sc)[:-1])
+#         y = [yi.sum(axis=0) for yi in y]
+#         y = [np.sum(yi.reshape(-1, r), axis=1) for yi in y]
+#         y = np.array(y)
+#         return y  # This is 3 lists of 192 Monthly points
+#
+#     @pm.deterministic
+#     def mu1(sim=sim):
+#         '''gets monthly data on 3 age groups. Slices to relevant
+#         data months'''
+#         # Slices relevant for months data
+#         start_ix = (1998 - r_start) * 12
+#         end_ix = (2014 - r_start) * 12
+#         ret = sim[:, start_ix:end_ix]
+#         return ret
+#         # Reduce y to monthly data and take only 1998-2014
+#         # res = reduce_month(y)[:, start_ix:end_ix]
+#         # logger.info(res.shape)
+#         # logger.info(data.shape)
+#
+#     # @pm.deterministic
+#     # def mu2(sim=sim):
+#     #     # start_ix = 1957 - r_start
+#     #     # end_ix = 2014 - r_start
+#     #     y = sim.sum(axis=0)
+#     #     y = np.sum(y.reshape(-1, 12), axis=1)
+#     #     return y
+#
+#     Y1 = pm.Normal('Y1', mu=mu1 * p, tau=1 / 50 ** 2, observed=True, value=data1)
+#     # Y2 = pm.Binomial('Y2', n=mu2, p=p, observed=True, value=data2)
+#
+#     return locals()
+#     # return ([rho, om, phi, f, mu1, mu2, Y1, Y2])

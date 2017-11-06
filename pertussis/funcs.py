@@ -4,6 +4,7 @@ from itertools import chain
 import pickle
 from scipy.stats import pearsonr
 
+
 def check(x=2):
     print("T")
     print(x)
@@ -14,7 +15,7 @@ def beta(t, omega, phi, rho=0, zero_year=1998, with_cos=True):
         return rho + cos((2 * pi * (t - zero_year) / omega) + phi)
     else:
         # print ('no cos')
-        return rho*t
+        return rho * t
 
 
 def pack_flat(Y):
@@ -141,7 +142,7 @@ def log_liklihood(model, data, sigma=1):
     # data[data>150] = model[data>150]
     # print(data)
     diff = (model - data) ** 2
-    diff[data>150] = 0
+    diff[data > 150] = 0
     LL = -diff / (2 * sigma ** 2)
 
     # print (LL)
@@ -175,53 +176,56 @@ def gelman_rubin(chains):
     B = np.zeros(params)  # Init for values of params
     W = np.zeros(params)  # Init for values of parmas
     for i in range(params):
-        means = [np.mean(chain[:, i]) for chain in chains] 
+        means = [np.mean(chain[:, i]) for chain in chains]
         mean_of_means = np.mean(means)
         variances = [np.var(chain[:, i]) for chain in chains]
         B[i] = N * np.var(means)
         # B = (N / M - 1) * 
         W[i] = np.mean(variances)
-    V =  (1 - (1/N)) * W + (1 / N) * B
-    R = np.sqrt(V/W)  
+    V = (1 - (1 / N)) * W + (1 / N) * B
+    R = np.sqrt(V / W)
     # V = ((N - 1) / N) * W + ((M + 1) / (M * N)) * B
     return R
 
 
-# def reduce_month(y, r, to_yearly=False):
-#     if to_yearly == True:
-#         r *= 12
-#     new_y = np.split(y, np.cumsum(sc)[:-1])
-#     new_y = [np.sum(yi.reshape(-1, r), axis=1) for yi in new_y]
-#     return new_y
-
 
 def save_mcmc(obj, path='./'):
     name = obj['name']
-    path = path + name + '.pkl'
-    with open(path, 'wb') as f:
+    save_path = path + name + '.pkl'
+    with open(save_path, 'wb') as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+    try:
+        save_path = './backup/'+path.replace('/','-') + name + '.pkl'
+        with open(save_path, 'wb') as f2:
+            pickle.dump(obj, f2, pickle.HIGHEST_PROTOCOL)
+    except FileNotFoundError as e:
+        print (e)
+        print("NO BACKUP SAVE")
 
 
 def load_mcmc(path='./mcmc.pkl'):
     with open(path, 'rb') as f:
         return pickle.load(f)
 
+
 def autocorr(chain, k):
-    r,_ = pearsonr(chain[k:],chain[:-k])
+    r, _ = pearsonr(chain[k:], chain[:-k])
     return abs(r)
+
 
 def autocorr_function(chain, max_k):
     ret = np.zeros(max_k)
-    for k in range(1,max_k):
-        ret[k-1] = autocorr(chain, k)
+    for k in range(1, max_k):
+        ret[k - 1] = autocorr(chain, k)
     return ret
+
 
 def ess(mcmc):
     chain = mcmc['chain'][mcmc['tally']:, :]
     N, params = chain.shape
     acf = np.zeros(params)
     for i in range(params):
-        acf[i] += autocorr_function(chain[:, i], max_k=20).sum()#autocorr(chain[:, i], k)
+        acf[i] += autocorr_function(chain[:, i], max_k=20).sum()  # autocorr(chain[:, i], k)
         # for k in range(1, 20):
         #     acf[i] += autocorr(chain[:, i], k)
     return N / (1 + 2 * acf)
