@@ -153,6 +153,7 @@ def difference_model(state_0, start, end,
         Shots[:, t] *= A
         New[:, t] *= A
     Healthy = S + Vap + Vwp
+    # print (Vap.mean(axis=1))
     logger.setLevel(logging.INFO)
     if full_output:
         return [S, Vap, Vwp, Is, Ia, R, Healthy, All, Shots, New]

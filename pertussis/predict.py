@@ -6,6 +6,7 @@ import numpy as np
 import scipy.stats as stats
 from tqdm import tqdm, tqdm_notebook as tqnb
 
+
 def reduce_month(y, r, to_yearly=False):
     if to_yearly == True:
         r *= 12
@@ -13,7 +14,7 @@ def reduce_month(y, r, to_yearly=False):
     new_y = np.split(y, np.cumsum(sc)[:-1])
     # print (new_y[0].shape)
     # print (new_y[1].shape)
-    new_y = [yi.sum(axis=0)  for yi in new_y]
+    new_y = [yi.sum(axis=0) for yi in new_y]
     # print (new_y[0].shape)
     # print (new_y[1].shape)
     new_y = [np.sum(yi.reshape(-1, r), axis=1) for yi in new_y]
@@ -23,13 +24,14 @@ def reduce_month(y, r, to_yearly=False):
     # print (new_y.shape)
     return new_y
 
-def init_simulation(name, mcmc, policies = (),**kwargs):
+
+def init_simulation(name, mcmc, policies=(), **kwargs):
     import copy
     extra = copy.deepcopy(kwargs)
     sim = {'name': name}
     sim['mcmc'] = mcmc
     sim['policies'] = policies
-
+    sim['n_policies'] = len(policies)
     # Info
     sim['start'] = mcmc['end']
     sim['end'] = mcmc['end'] + extra.get('simulation_length', 12)
@@ -76,6 +78,12 @@ def init_policy(name, **kwargs):
         _dynamic_ap = np.in1d(a_u, _dynamic_ages).astype(int)
         _dynamic_ap = coverage * _dynamic_ap.astype(float)[:-1]
         policy['dynamic_ap'] = _dynamic_ap
+    if 'control' in extra.keys():
+        _control_ages = extra['control']
+        assert all(np.in1d(_control_ages, a_u)), "Control Vaccine should happen on listed Age Group:\n {}".format(_ages)
+        _control_ap = np.in1d(a_u, _control_ages).astype(int)
+        _control_ap = 0.25 * coverage * _control_ap.astype(float)[:-1]
+        policy['control_ap'] = _control_ap
     # policy['pregnant_coverage'] = 0.95
     # _vax_ap[22] = policy['pregnant_coverage'] * 0.5 # Vaccinate pregnant
     policy['vax_ap'] = _vax_ap
@@ -178,23 +186,30 @@ def predict_model(state_0, start, end,
             if int(T) % 4 == policy['mod_year']:
                 # ADD TO VAX AGES
                 vax += policy['dynamic_ap']
+        if 'control' in policy.keys():
+            # ADD TO VAX AGES
+            vax += policy['control_ap']
+        # print (vax)
 
         Vap[1:, t] += r * vax * a * nS[:-1]  # IN: Age and vaccinate aP from S classes
         S[1:, t] += r * (1 - vax) * a * nS[:-1]  # IN: Age from previous age no vaccine
+        # S[1, t] += r * (1-vax) * a[0] * nVap[0]
 
         Shots[1:, t] += r * vax * a * nA[:-1]
+        # print(vax)
         Vap[:, t] -= r * lambda_ * e_ap * nVap  # OUT: Getting sick (reduced by efficacy)
         Vwp[:, t] -= r * lambda_ * e_wp * nVwp  # OUT: Getting sick (reduced by efficacy)
         Vap[:, t] -= r * omega_ap * nVap  # OUT: Waning to S
         Vwp[:, t] -= r * omega_wp * nVwp  # OUT: Waning
-
 
         # Infected
         I_ap = r * lambda_ * e_ap * nVap  # HELPER: Infected with ap
         I_wp = r * lambda_ * (e_wp * nVwp + nS)  # HELPER: Infected with wp or no vaccine
 
         New[:, t] = alpha_ap * I_ap + alpha_wp * I_wp  # New infected - this is the most important for fit
-
+        # if t==1:
+        #     print (alpha_ap)
+        #     print (alpha_wp)
         Is[:, t] += alpha_ap * I_ap + alpha_wp * I_wp  # IN: Infected with symptoms chance
         Is[:, t] -= r * gamma_s * nIs  # OUT: Recovered
 
@@ -245,6 +260,7 @@ def predict_model(state_0, start, end,
 
 
 def simulate_future(simulation, iterations=1000, r=3):
+    # save_mcmc(simulation, './simulations/')
     policies = simulation['policies']
     mcmc = simulation['mcmc']
     start = simulation['start']
@@ -263,18 +279,22 @@ def simulate_future(simulation, iterations=1000, r=3):
 
     # Simulate futures
     for i in tqnb(range(iterations)):
+        # if i % 50 == 1:
+        #     save_mcmc(simulation, './simulations/')
         # pick number then take from same place and sample from dists
         pick = np.random.randint(0, l)
         beta_p = simulation['dist'].rvs()
-        uniform_preg_cov = stats.uniform(0.25,0.5).rvs()
+        # uniform_preg_cov = stats.uniform(0.25, 0.75).rvs()
+        uniform_preg_cov = stats.uniform(0, 1).rvs()
+        # print(uniform_preg_cov)
 
         # save chains
         simulation['subset_pick'].append(pick)
         simulation['p'].append(beta_p)
         simulation['pregnant_coverage'].append(uniform_preg_cov)
         # Pick set and state_z from mcmc
-        state_0 = subset_states[pick,:]
-        state_0 = np.split(state_0,10)
+        state_0 = subset_states[pick, :]
+        state_0 = np.split(state_0, 10)
         params = mcmc['initial_guess'].copy()
         params[mcmc['active_params']] = subset_chain[pick, :]
         om, phi, rho, f1, f2, f3 = params
@@ -283,44 +303,44 @@ def simulate_future(simulation, iterations=1000, r=3):
         # Run on all poclies
         for policy in tqnb(policies, leave=False):
             policy['pregnant_coverage'] = uniform_preg_cov
+            # print (policy['pregnant_coverage'])
+            # print ( policy['vax_ap'])
             policy['vax_ap'][22] = policy['pregnant_coverage'] * 0.5  # Vaccinate pregnant
+            # print ( policy['vax_ap'])
+            # print()
             y = predict_model(state_0, start, end,
-                              rho, om, phi, f, e=0.97,
+                              rho, om, phi, f, e=1,
                               r=r, policy=policy)
+            # break
             # policy['results'] = y
             sick = reduce_month(y[-1], r)
             vaccines = reduce_month(y[-2], r)
-            # print ()
-            ### PRINTS
-            # print (sick.sum(axis=1))
-            # print (p)
-            # print (sick.sum(axis=1)*p)
-            # print (vaccines.sum(axis=1))
-            # print ()
-            # return sick
+
             policy['sick'].append(sick.sum(axis=1))
-            policy['hospital'].append(sick.sum(axis=1)*beta_p)
+            policy['hospital'].append(sick.sum(axis=1) * beta_p)
             policy['vaccines'].append(vaccines.sum(axis=1))
-        # break
+            # break
 
 
 def compare_policies(simulation):
     pass
 
+
 def take_subsets(mcmc):
     tally = mcmc['tally']
-    chain = mcmc['chain'][tally:,:]
+    chain = mcmc['chain'][tally:, :]
     # Pick Chains for Simulation
     l = len(chain)
     chain_ess = ess(mcmc)
-    print ('Effective sample size: {}'.format(chain_ess))
+    print('Effective sample size: {}'.format(chain_ess))
     thinning = (l // chain_ess).max().astype(int)
     mcmc['state_z_subset'] = mcmc['state_z'][tally::thinning, :]
     mcmc['chain_subset'] = mcmc['chain'][tally::thinning, :]
     cut = mcmc['state_z_subset'].sum(axis=1) > 0
     mcmc['chain_subset'] = mcmc['chain_subset'][cut, :]
     mcmc['state_z_subset'] = mcmc['state_z_subset'][cut, :]
-    print ('Subset length: {}'.format(len(mcmc['chain_subset'])))
+    print('Subset length: {}'.format(len(mcmc['chain_subset'])))
+
 
 def test():
     policy1 = init_policy('test_default')
@@ -339,6 +359,7 @@ def test():
     exit()
     print(policy1['picks'])
     print(policy2['picks'])
+
 
 def create_pairwise(simulation):
     policies = simulation['policies']

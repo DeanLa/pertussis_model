@@ -22,6 +22,8 @@ _ages = np.hstack((np.arange(0, 1, 2 / 12),  # First year: Every 2 months
 a_l = _ages[:-1]  # Lower limits
 a_u = _ages[1:]  # Upper limis
 a = N / (a_u - a_l)[:-1]
+# print((a_u - a_l)[:-1])
+# print(a.shape)
 # logger.debug("AGES: {}".format(_ages))
 # logger.debug("a: {}".format(a))
 # Constants
@@ -77,19 +79,21 @@ p = np.array((0.01,0.015,0.015)).reshape(3,1)
 # Vaccines
 # =====================================================================================================================
 # Policy
-_vax_ages = [2 / 12, 4 / 12, 6 / 12, 1, 7, 13]
+_vax_ages = [0, 2 / 12, 4 / 12, 6 / 12, 1, 7, 13]
 assert all(np.in1d(_vax_ages, _ages)), "Vaccine should happen on listed Age Group:\n {}".format(_ages)
 coverage = 0.95
-vax_ap = np.in1d(a_u, _vax_ages).astype(int)  # Currently holds indexes for efficacy
-# print (vax_ap.shape)
+vax_ap = np.in1d(a_l, _vax_ages).astype(int)  # Currently holds indexes for efficacy
+# print(a_l[22:])
 # Efficacy
 epsilon_wp = 0.99
-epsilon_ap = np.array((0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
+epsilon_ap = np.array((1 ,0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
 epsilon_ap = (np.take(epsilon_ap, np.cumsum(vax_ap) - 1))  # Turn into vector
+# print (epsilon_ap.shape)
+# print (epsilon_ap)
 # print (epsilon_ap)
 # exit()
 vax_ap = coverage * vax_ap.astype(float)[:-1]  # Now multiplied by coverage
-vax_wp = np.in1d(a_u, [2 / 12, 4 / 12, 6 / 12, 1]).astype(float)[:-1]  # Hard coded on purpose - old policy
+vax_wp = np.in1d(a_u, [0, 2 / 12, 4 / 12, 6 / 12, 1]).astype(float)[:-1]  # Hard coded on purpose - old policy
 logger.debug("vax_ap {}".format(vax_wp))
 
 # if type(alpha_ap) == str:

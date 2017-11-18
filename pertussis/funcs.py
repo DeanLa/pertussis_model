@@ -138,9 +138,6 @@ def binom_likelihood(model, data, p):
 
 
 def log_liklihood(model, data, sigma=1):
-    # print (data.shape, model.shape)
-    # data[data>150] = model[data>150]
-    # print(data)
     diff = (model - data) ** 2
     diff[data > 150] = 0
     LL = -diff / (2 * sigma ** 2)
@@ -201,6 +198,7 @@ def save_mcmc(obj, path='./'):
     except FileNotFoundError as e:
         print (e)
         print("NO BACKUP SAVE")
+    return obj['name']
 
 
 def load_mcmc(path='./mcmc.pkl'):
@@ -225,7 +223,7 @@ def ess(mcmc):
     N, params = chain.shape
     acf = np.zeros(params)
     for i in range(params):
-        acf[i] += autocorr_function(chain[:, i], max_k=20).sum()  # autocorr(chain[:, i], k)
+        acf[i] += autocorr_function(chain[:, i], max_k=10).sum()  # autocorr(chain[:, i], k)
         # for k in range(1, 20):
         #     acf[i] += autocorr(chain[:, i], k)
     return N / (1 + 2 * acf)

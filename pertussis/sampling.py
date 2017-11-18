@@ -140,19 +140,21 @@ def sample(mcmcs, iterations=1000, recalculate=250, sd_stop_after=5000,
            scaling_stop_after=5000, save_path='./', do_gr=True):
     # mcmcs[2]['active'] = False
 
-    iter_over = np.ones(iterations // recalculate) * recalculate
+    iter_over = np.ones(int(iterations // recalculate)) * int(recalculate)
     iter_mod = iterations % recalculate
     if iter_mod: iter_over = np.append(iter_over, iter_mod)
+    iter_over = iter_over.astype(int)
     print(iter_over)
     print([mc['name'] for mc in mcmcs])
     sleep(0.5)
     for mini in tqdm(iter_over, desc=" " * 50, position=2):
         print(mini)
-        mcmcs = sample_multi(mcmcs, recalculate, sd_stop_after, scaling_stop_after, save_path)
+        mcmcs = sample_multi(mcmcs, mini, sd_stop_after, scaling_stop_after, save_path)
         sleep(0.5)
         print()
         if (do_gr) and (sum([mc['active'] for mc in mcmcs]) > 1):
-            gelman_rubin_test(mcmcs, start_after=1000, save_path=save_path)
+            gelman_rubin_test(mcmcs, start_after=5000, save_path=save_path)
+    return mcmcs
 
 
 def gelman_rubin_test(mcmcs, start_after, save_path):
