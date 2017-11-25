@@ -189,3 +189,28 @@ def likelihood_progression_multi(mcmcs):
     ax.set_title('Likelihood Progreesion')
     # ax.set_xlim((0,1000))
     return fig, ax
+
+def policy_comparison(df, colors, ax=None):
+    import seaborn as sns
+    fontdict = {'fontsize': 12}
+    policy_names = df.columns
+    if ax:
+        fig = ax.figure.canvas
+    else:
+        fig, ax = plt.subplots(figsize=(16, 16))
+    sns.boxplot(data = df, ax=ax, orient="h", palette=colors)
+    win_ratio = (df > 0).mean(axis=0).values
+    ax.set_yticklabels(policy_names, fontdict=fontdict)
+    ax.vlines(0, 0, len(policy_names), linestyles='--', alpha=0.3)
+
+    lims = list(ax.get_xlim())
+    lims[0] *= 1
+    ax.hlines(np.arange(len(policy_names)), *lims, linestyles='--', alpha=0.3, zorder=-5, lw=0.5)
+    ax.set_xlim(*lims)
+    for i, r in enumerate(win_ratio):
+        if (r<0.0001) or (r>0.9999): continue
+        text_color = 'g' if r>0.8 else 'k'
+        ax.annotate("{:.2f}%".format(100*r), xy=(lims[0], i-0.1), fontsize=16, color=text_color)
+
+    plt.tight_layout()
+    return fig, ax

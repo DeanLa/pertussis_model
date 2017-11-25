@@ -43,7 +43,7 @@ def sample_mcmc(mcmc, recalculate, sd_stop_after, scaling_stop_after, save_path)
                 new_cov_tmp = mcmc['cov'].copy()
                 try:
                     sigma_star = np.cov(mcmc['chain'][-recalculate:, :].T)
-                    new_cov = mcmc['cov'].copy() * 0.25 + 0.75 * sigma_star
+                    new_cov = mcmc['cov '].copy() * 0.25 + 0.75 * sigma_star
                     proposed = multinorm(mcmc['values'], new_cov * new_scaling_factor ** 2)
                     mcmc['cov'] = new_cov
                 except:

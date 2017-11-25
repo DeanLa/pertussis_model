@@ -7,7 +7,7 @@ if __name__ == '__main__':
     logger.setLevel(logging.INFO)
     # Initial
     r_start = 1929
-    r_end = 2014
+    r_end = 2018
     step = 1 / N
 
     # Data
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     # Load
     if load:
         how_many = 4
-        # vers = 'chains/1117-rho-60-multi-sigma-'
+        vers = 'chains/1117-rho-60-multi-sigma-'
         vers = ''
         print('./' + vers)
         mcmcs = [load_mcmc('./' + vers + 'mcmc_v2_{}.pkl'.format(i)) for i in range(how_many)]
@@ -59,7 +59,7 @@ if __name__ == '__main__':
                             sigma=np.array([50,100,100]).reshape(3,1))
         mcmcs = []
 
-        my_rho = 60
+        my_rho = 70
         print("V2")
         # Chains
         om, phi, rho, f1, f2, f3, e = 3.9805, 1.45, my_rho, 0.0008, 0.0004, 0.00007, 1

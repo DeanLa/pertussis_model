@@ -28,6 +28,8 @@ def difference_model(state_0, start, end,
     for i, c in enumerate([S, Vap, Vwp, Is, Ia, R]):
         c[:, 0] = state_0[i]
         All[:, 0] += c[:, 0]
+    # New[:, 0] = state_0[9]
+    # All[:, 0] = state_0[7]
     # ************************************************* Start Loop ***************************************
     for t, T in enumerate(timeline[1:], start=1):
         demographic_change = 2300 >= T >= data_start
@@ -36,7 +38,7 @@ def difference_model(state_0, start, end,
                     max(0, int(T) - data_start))  # 2014 where it ends
         # Compartments and Derivatives
         A = All[:, t - 1].sum()
-        if A > 15e6:
+        if A > 30e6:
             print("TOO MUCH", T)
             logger.setLevel(logging.INFO)
             logger.error("Too much people at time: {:.2f}".format(T))
@@ -153,11 +155,9 @@ def difference_model(state_0, start, end,
         Shots[:, t] *= A
         New[:, t] *= A
     Healthy = S + Vap + Vwp
-    # print (Vap.mean(axis=1))
     logger.setLevel(logging.INFO)
     if full_output:
         return [S, Vap, Vwp, Is, Ia, R, Healthy, All, Shots, New]
-    # print (New.shape)
     return New
 
 
@@ -195,7 +195,7 @@ def run_model(state_0, start, end,
     mean_sick = (tmp_R / tmp_A).mean()
     # exit()
     # Test condition
-    if mean_sick <= 0.7:
+    if mean_sick <= 0.0:
         logger.error('Not enough sick kids, {:.2f}'.format(mean_sick))
         return no_likelihood
     # Save last state
@@ -214,7 +214,10 @@ def run_model(state_0, start, end,
     # Slices relevant for months data
     start_ix = (1998 - start) * 12
     end_ix = (2014 - start) * 12
+    extra_ix = 30
     monthly = y[:, start_ix:end_ix]
+    extra_monthly = y[:, end_ix:extra_ix].sum(axis = 0)
+    print(extra_monthly.shape)
 
     # Yearly
     # start_ix = 1951 - start
@@ -224,6 +227,7 @@ def run_model(state_0, start, end,
     # yearly = yearly[start_ix:end_ix]
     # return (monthly, yearly)  # This is 3 lists of 192 Monthly points and 48 yearly
     return monthly, state_z
+    return monthly, extra_monthly, state_z
 
 
 def init_mcmc(name, state_0, r_start, r_end, *params, **kwargs):

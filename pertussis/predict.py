@@ -36,7 +36,7 @@ def init_simulation(name, mcmc, policies=(), **kwargs):
     sim['start'] = mcmc['end']
     sim['end'] = mcmc['end'] + extra.get('simulation_length', 12)
     # Hospital dist (From Excel Data) - DO not change
-    sim['data_sick'] = np.array([1647, 9761, 6832])
+    sim['data_sick'] = np.array([1647, 9761, 6832])  # * p
     sim['data_hospital'] = np.array([500, 201, 129])
     a = 1 + sim['data_hospital']
     b = 1 + sim['data_sick'] - sim['data_hospital']
@@ -120,6 +120,7 @@ def predict_model(state_0, start, end,
     for i, c in enumerate([S, Vap, Vwp, Is, Ia, R]):
         c[:, 0] = state_0[i]
         All[:, 0] += c[:, 0]
+    New[:, 0] = state_0[9]
     # ************************************************* Start Loop ***************************************
     # print (timeline[[1,-1]])
     for t, T in enumerate(timeline[1:], start=1):
@@ -193,10 +194,9 @@ def predict_model(state_0, start, end,
 
         Vap[1:, t] += r * vax * a * nS[:-1]  # IN: Age and vaccinate aP from S classes
         S[1:, t] += r * (1 - vax) * a * nS[:-1]  # IN: Age from previous age no vaccine
-        # S[1, t] += r * (1-vax) * a[0] * nVap[0]
 
-        Shots[1:, t] += r * vax * a * nA[:-1]
-        # print(vax)
+        Shots[1:, t] += r * vax * a * nA[:-1]  ### COUNTER
+
         Vap[:, t] -= r * lambda_ * e_ap * nVap  # OUT: Getting sick (reduced by efficacy)
         Vwp[:, t] -= r * lambda_ * e_wp * nVwp  # OUT: Getting sick (reduced by efficacy)
         Vap[:, t] -= r * omega_ap * nVap  # OUT: Waning to S
@@ -229,7 +229,7 @@ def predict_model(state_0, start, end,
             a_corr_ap = 1  # get the age transition correction vector for ap
             a_corr_wp = age_correction(1957, T, a_u)  # get the age transition correction vector for wp
             Vap[1:, t] += r * a * nVap[:-1] * a_corr_ap  # IN
-            Vap[:-1, t] -= r * a * nVap[:-1] * a_corr_ap  # OUT
+            Vap[:-1, t] -= r * a * nVap[:-1] * a_corr_ap  # OUT - Next Age Group
             Vwp[1:, t] += r * a * nVwp[:-1] * a_corr_wp  # IN
             Vwp[:-1, t] -= r * a * nVwp[:-1] * a_corr_wp  # OUT
             # print (a.shape,  Is[:-1].shape, nVwp[:-1].shape)
@@ -256,11 +256,12 @@ def predict_model(state_0, start, end,
     Healthy = S + Vap + Vwp
     logger.setLevel(logging.INFO)
     # print (New)
+    # print(New[:, 0].shape)
+    # print(New[:, 0])
     return [S, Vap, Vwp, Is, Ia, R, Healthy, All, Shots, New]
 
 
 def simulate_future(simulation, iterations=1000, r=3):
-    # save_mcmc(simulation, './simulations/')
     policies = simulation['policies']
     mcmc = simulation['mcmc']
     start = simulation['start']
@@ -279,8 +280,8 @@ def simulate_future(simulation, iterations=1000, r=3):
 
     # Simulate futures
     for i in tqnb(range(iterations)):
-        # if i % 50 == 1:
-        #     save_mcmc(simulation, './simulations/')
+        if i % 20 == 1:
+            save_mcmc(simulation, './simulations/')
         # pick number then take from same place and sample from dists
         pick = np.random.randint(0, l)
         beta_p = simulation['dist'].rvs()
@@ -320,6 +321,76 @@ def simulate_future(simulation, iterations=1000, r=3):
             policy['hospital'].append(sick.sum(axis=1) * beta_p)
             policy['vaccines'].append(vaccines.sum(axis=1))
             # break
+    save_mcmc(simulation, './simulations/')
+
+
+def predict_soon(simulation, r=3):
+    policy = simulation['policies'][0].copy()
+    mcmc = simulation['mcmc']
+    start = simulation['start']
+    more = 8
+    end = simulation['start'] + more
+
+    # Get relevant subsets
+    try:
+        subset_chain = mcmc['chain_subset']
+        subset_states = mcmc['state_z_subset']
+        l = len(subset_chain)
+    except:
+        print("No chain subset in MCMC")
+        exit()
+    print("L", l)
+    mcmc['prediction'] = np.zeros((0, 3, more * 12))
+    for pick in tqnb(range(l)):
+        # Pick set and state_z from mcmc
+        state_0 = subset_states[pick, :]
+        state_0 = np.split(state_0, 10)
+        params = mcmc['initial_guess'].copy()
+        params[mcmc['active_params']] = subset_chain[pick, :]
+        om, phi, rho, f1, f2, f3 = params
+        f = np.concatenate((nums(f1, sc[0]), nums(f2, sc[1]), nums(f3, sc[2])))
+        # policy['pregnant_coverage'] = 0
+        y = predict_model(state_0, start, end,
+                          rho, om, phi, f, e=1,
+                          r=r, policy=policy)
+        # print ('---------------------------')
+        # print(y[-1].shape)
+        # print(y[-1][:,0])
+        # y = difference_model(state_0, start, end,
+        #                      rho, om, phi, f, 1,
+        #                      r=r, full_output=True)
+        # y, _ = run_model(state_0, 1998, 2014,
+        #                  om, phi, rho, f1,f2,f3,e=1,r=3, r_0=20,years_prior=1)
+
+        # break
+        # policy['results'] = y
+        # sick = reduce_month(y[-1]/y[-3].sum(axis=0), r)
+        # all = y[-3]
+
+        A = y[-3]
+        # print (A[:,0])
+        # A = 1
+        y = y[-1]
+        # print (y[:,0])
+        # # Take result and sum values according to susceptibility
+        y = np.split(y, np.cumsum(sc)[:-1])
+        # print(y[1].shape)
+        y = [yi.sum(axis=0) for yi in y]
+        # print(y[1].shape)
+        # print (y)
+        # print (A.sum(axis=0))
+        y = [yi / A.sum(axis=0) for yi in y]
+        # print (y[1].shape)
+        # print (y[1])
+        y = [np.sum(yi.reshape(-1, r), axis=1) for yi in y]
+        # print (y[1].shape)
+        # print (y[1])
+        # print (y)
+        y = np.array(y)
+        per100k = y * 10 ** 5  # y[:, -48:]
+        # print (per100k.shape)
+        mcmc['prediction'] = np.concatenate((mcmc['prediction'], per100k[None, :, :]), axis=0)
+        # break
 
 
 def compare_policies(simulation):
@@ -334,11 +405,17 @@ def take_subsets(mcmc):
     chain_ess = ess(mcmc)
     print('Effective sample size: {}'.format(chain_ess))
     thinning = (l // chain_ess).max().astype(int)
-    mcmc['state_z_subset'] = mcmc['state_z'][tally::thinning, :]
-    mcmc['chain_subset'] = mcmc['chain'][tally::thinning, :]
+    # thinning = 9000
+    sl = np.arange(tally, len(mcmc['chain']), thinning)
+    print(sl)
+    # mcmc['picks'] = sl
+    mcmc['state_z_subset'] = mcmc['state_z'][sl, :]
+    mcmc['chain_subset'] = mcmc['chain'][sl, :]
     cut = mcmc['state_z_subset'].sum(axis=1) > 0
+    print(cut.shape)
     mcmc['chain_subset'] = mcmc['chain_subset'][cut, :]
     mcmc['state_z_subset'] = mcmc['state_z_subset'][cut, :]
+    mcmc['picks'] = sl[cut]
     print('Subset length: {}'.format(len(mcmc['chain_subset'])))
 
 
@@ -365,13 +442,17 @@ def create_pairwise(simulation):
     policies = simulation['policies']
     default = policies[0]
     metric_names = ['sick', 'hospital', 'vaccines']
-    age_names = ['0-1', '1-21', '21+']
+    base = {}
+    for m in metric_names:
+        base[m] = np.array(default[m])
     # Make differences from default
     for policy in simulation['policies']:
-        policy['sick_diff'] = np.array(policy['sick']) - np.array(default['sick'])
-        policy['hospital_diff'] = np.array(policy['hospital']) - np.array(default['hospital'])
-        policy['vaccines_diff'] = np.array(policy['vaccines']) - np.array(default['vaccines'])
-        policy['ratio'] = (np.array(policy['sick'])).sum(axis=1) / (np.array(policy['vaccines'])).sum(axis=1)
+        for m in metric_names:
+            policy[m+'_diff'] = base[m] - np.array(policy[m])
+            policy[m+'_pct'] = 100 * policy[m+'_diff'].sum(axis=1) / base[m].sum(axis=1)
+        # policy['hospital_diff'] = np.array(default['hospital']) - np.array(policy['hospital'])
+        # policy['vaccines_diff'] = np.array(default['vaccines']) - np.array(policy['vaccines'])
+        # policy['ratio'] = (np.array(policy['sick'])).sum(axis=1) / (np.array(policy['vaccines'])).sum(axis=1)
         # IMPORTANT: Default has to be first!!!!!
         #     policy['ratio_diff'] = policy['ratio'] - default['ratio']
-        policy['ratio_diff'] = np.array(policy['sick_diff']).sum(axis=1) / np.array(policy['vaccines']).sum(axis=1)
+        # policy['ratio_diff'] = np.array(policy['sick_diff']).sum(axis=1) / np.array(policy['vaccines']).sum(axis=1)

@@ -40,8 +40,8 @@ C[6:10,0:6] = 584
 # delta = np.ones(1100) * N / 75
 delta = np.genfromtxt('./data/demographics/birth_rate.csv', delimiter=',',
                       skip_header=1, usecols=[3]) * N
-delta = np.pad(delta, (data_prior, 100), 'edge')
 # print (delta)
+delta = np.pad(delta, (data_prior, 100), 'edge')
 # exit()
 mu = np.genfromtxt('./data/demographics/death_rate.csv', delimiter=',',
                    skip_header=1)[:, 1:] * N  # * _O  # Death [] yearly
@@ -86,7 +86,7 @@ vax_ap = np.in1d(a_l, _vax_ages).astype(int)  # Currently holds indexes for effi
 # print(a_l[22:])
 # Efficacy
 epsilon_wp = 0.99
-epsilon_ap = np.array((1 ,0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
+epsilon_ap = np.array((0.89 ,0.55, 0.75, 0.84, 0.98, 0.98, 0.98))  # [3]
 epsilon_ap = (np.take(epsilon_ap, np.cumsum(vax_ap) - 1))  # Turn into vector
 # print (epsilon_ap.shape)
 # print (epsilon_ap)
@@ -119,7 +119,7 @@ gamma_a = (1 / 8) * 365 * N  # Healing rate Asymptomatic [1] 16 days [3] 8
 
 
 # =====================================================================================================================
-def collect_state0(S0=0.2, Is0=0.05, death=death):
+def collect_state0(S0=0.2, Is0=0.002, death=death):
     _pop = np.genfromtxt('./data/demographics/population_new.csv', delimiter=',',
                          skip_header=True, max_rows=1)[1:] * 1000
     _pop = _pop * (0.98) ** data_prior
