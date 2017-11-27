@@ -79,7 +79,7 @@ p = np.array((0.01,0.015,0.015)).reshape(3,1)
 # Vaccines
 # =====================================================================================================================
 # Policy
-_vax_ages = [0, 2 / 12, 4 / 12, 6 / 12, 1, 7, 13]
+_vax_ages = [0, 2 / 12, 4 / 12, a_l[5], 6, 12]
 assert all(np.in1d(_vax_ages, _ages)), "Vaccine should happen on listed Age Group:\n {}".format(_ages)
 coverage = 0.95
 vax_ap = np.in1d(a_l, _vax_ages).astype(int)  # Currently holds indexes for efficacy
@@ -119,7 +119,8 @@ gamma_a = (1 / 8) * 365 * N  # Healing rate Asymptomatic [1] 16 days [3] 8
 
 
 # =====================================================================================================================
-def collect_state0(S0=0.2, Is0=0.002, death=death):
+def collect_state0(S0=0.2, Is0=0.02, death=death):
+    # print('>'*300)
     _pop = np.genfromtxt('./data/demographics/population_new.csv', delimiter=',',
                          skip_header=True, max_rows=1)[1:] * 1000
     _pop = _pop * (0.98) ** data_prior

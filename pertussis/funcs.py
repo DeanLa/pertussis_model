@@ -5,11 +5,6 @@ import pickle
 from scipy.stats import pearsonr
 
 
-def check(x=2):
-    print("T")
-    print(x)
-
-
 def beta(t, omega, phi, rho=0, zero_year=1998, with_cos=True):
     if with_cos:
         return rho + cos((2 * pi * (t - zero_year) / omega) + phi)
@@ -62,22 +57,6 @@ def expand_time(t, start, step):
     return (t - start) * step
 
 
-# def reduce_month(vec):
-#     months = (31, 28, 31, 30,
-#               31, 30, 31, 31,
-#               30, 31, 30, 31)
-#     if vec.ndim == 1:
-#         l = vec.size
-#         assert l % 365 == 0, "Vector must divide with 365. Current modulo: {}".format(l % 365)
-#         months = np.tile(months, l // 365)
-#         months = np.cumsum(months)
-#         res = np.split(vec, months[:-1])
-#         res = np.array([a.sum() for a in res])
-#         return res
-#     if vec.ndim == 2:
-#         return np.apply_along_axis(reduce_month, 1, vec)
-
-
 def reduce_year(vec):
     """Takes daily results from model and gives sum by years(365 days in a year)"""
     if vec.ndim == 1:
@@ -123,39 +102,19 @@ def age_correction(start_year, T, age_vec):
     return vec.astype(int)[:-1]
 
 
-def new_cases(vec, healing):
-    ret = vec[1:] - (1 - healing) * vec[:-1]
-    ret = np.hstack((0, ret))
-    return ret
+# def new_cases(vec, healing):
+#     ret = vec[1:] - (1 - healing) * vec[:-1]
+#     ret = np.hstack((0, ret))
+#     return ret
 
-
-def binom_likelihood(model, data, p):
-    from scipy.special import binom
-    assert all((model >= data).reshape(-1, 1)), "model<data somewhere"
-    choose = binom(model, data)
-    ll = np.log(choose) + data * np.log(p) + (model - data) * np.log(1 - p)
-    return ll.sum()
-
-
-def log_liklihood(model, data, sigma=1):
+# Sampling
+def log_liklihood(model, data, sigma=1, noise=150):
     diff = (model - data) ** 2
-    diff[data > 150] = 0
+    diff[data > noise] = 0
     LL = -diff / (2 * sigma ** 2)
-
-    # print (LL)
     return LL.sum()
 
 
-def log_ratio(model_star, model_current, data, sigma=1):
-    """Compute log ratio between two models
-    to compute r add between those
-    https://www.stat.cmu.edu/~cshalizi/mreg/15/lectures/06/lecture-06.pdf"""
-    diff_star = log_liklihood(model_star, data, sigma)
-    diff_current = log_liklihood(model_current, data, sigma)
-    # diff_star = (model_star - data) ** 2
-    # diff_current = (model_current - data) ** 2
-    # log_ratio = - (diff_star.sum() - diff_current.sum()) / (2 * sigma ** 2)
-    return diff_star - diff_current
 
 
 def make_chains(mcmcs):
@@ -177,26 +136,38 @@ def gelman_rubin(chains):
         mean_of_means = np.mean(means)
         variances = [np.var(chain[:, i]) for chain in chains]
         B[i] = N * np.var(means)
-        # B = (N / M - 1) * 
+        # B = (N / M - 1) *
         W[i] = np.mean(variances)
     V = (1 - (1 / N)) * W + (1 / N) * B
     R = np.sqrt(V / W)
     # V = ((N - 1) / N) * W + ((M + 1) / (M * N)) * B
     return R
 
+def is_invertible(a):
+    return a.shape[0] == a.shape[1] and np.linalg.matrix_rank(a) == a.shape[0]
+# def log_ratio(model_star, model_current, data, sigma=1):
+#     """Compute log ratio between two models
+#     to compute r add between those
+#     https://www.stat.cmu.edu/~cshalizi/mreg/15/lectures/06/lecture-06.pdf"""
+#     diff_star = log_liklihood(model_star, data, sigma)
+#     diff_current = log_liklihood(model_current, data, sigma)
+#     # diff_star = (model_star - data) ** 2
+#     # diff_current = (model_current - data) ** 2
+#     # log_ratio = - (diff_star.sum() - diff_current.sum()) / (2 * sigma ** 2)
+#     return diff_star - diff_current
 
-
+# I/O Operations
 def save_mcmc(obj, path='./'):
     name = obj['name']
     save_path = path + name + '.pkl'
     with open(save_path, 'wb') as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
     try:
-        save_path = './backup/'+path.replace('/','-') + name + '.pkl'
+        save_path = './backup/' + path.replace('/', '-') + name + '.pkl'
         with open(save_path, 'wb') as f2:
             pickle.dump(obj, f2, pickle.HIGHEST_PROTOCOL)
     except FileNotFoundError as e:
-        print (e)
+        print(e)
         print("NO BACKUP SAVE")
     return obj['name']
 
@@ -206,6 +177,7 @@ def load_mcmc(path='./mcmc.pkl'):
         return pickle.load(f)
 
 
+# Autocorrelation Diagnostics
 def autocorr(chain, k):
     r, _ = pearsonr(chain[k:], chain[:-k])
     return abs(r)
@@ -221,6 +193,7 @@ def autocorr_function(chain, max_k):
 def ess(mcmc):
     chain = mcmc['chain'][mcmc['tally']:, :]
     N, params = chain.shape
+    print(chain.shape)
     acf = np.zeros(params)
     for i in range(params):
         acf[i] += autocorr_function(chain[:, i], max_k=10).sum()  # autocorr(chain[:, i], k)

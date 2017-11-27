@@ -9,6 +9,7 @@ mcmc*.pkl
 /tests/
 .dropbox
 /log/
+random_search/*.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

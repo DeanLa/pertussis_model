@@ -33,7 +33,7 @@ def difference_model(state_0, start, end,
     # ************************************************* Start Loop ***************************************
     for t, T in enumerate(timeline[1:], start=1):
         demographic_change = 2300 >= T >= data_start
-
+        vax_ap[21] = 0
         t_max = min(2014 - data_start,
                     max(0, int(T) - data_start))  # 2014 where it ends
         # Compartments and Derivatives
@@ -59,7 +59,7 @@ def difference_model(state_0, start, end,
 
         ## Helpers
         nI = nIa + nIs
-        beta_ = 0 + f * beta(T, om, phi, rho)
+        beta_ = f * beta(T, om, phi, rho)
         # 0 + cos((2 * pi * (t - zero_year) / omega) + phi)
         # rho + f*cos(...)
         # f * (rho + cos(...)) = (f1/f2/f3) * rho + f*cos(...)
@@ -78,7 +78,12 @@ def difference_model(state_0, start, end,
         ## Susceptible
         # Birth
         if demographic_change:
-            S[0, t] += delta[t_max] * r  # IN: Birth rate
+            preg_cover = 0
+            if T >= 2016:
+                preg_cover = 0.5
+            babies = delta[t_max] * r
+            Vap[0, t] += babies * preg_cover
+            S[0, t] += babies * (1 - preg_cover)  # IN: Birth rate
         # Transmission
         S[:, t] += r * (omega * nR + omega_ap * nVap + omega_wp * nVwp)  # IN: Waning from Natural and vaccine
         S[:, t] -= r * lambda_ * nS  # OUT: Becoming infected
@@ -94,10 +99,11 @@ def difference_model(state_0, start, end,
             Vwp[1:, t] += r * vax_wp * a * nS[:-1]  # IN: Age and vaccinate wP from S classes
             S[1:, t] += r * (1 - vax_wp) * a * nS[:-1]  # IN: Age from previous age no vaccine
         if T >= 2002:  # Begin aP
-            Vap[1:, t] += r * vax_ap * a * nS[:-1]  # IN: Age and vaccinate aP from S classes
+            if T >= 2015:
+                vax_ap[21] = preg_cover * 0.5
+            Vap[1:, t] += r * vax_ap * a * nS[:-1]  # IN: Age and vaccinate aP from S classes >>>>>>>>>>
             S[1:, t] += r * (1 - vax_ap) * a * nS[:-1]  # IN: Age from previous age no vaccine
             Shots[1:, t] += r * vax_ap * a * nA[:-1]
-            # Shots[1:, t] += r * np.ones(26) * a * nA[:-1]
         Vap[:, t] -= r * lambda_ * e_ap * nVap  # OUT: Getting sick (reduced by efficacy)
         Vwp[:, t] -= r * lambda_ * e_wp * nVwp  # OUT: Getting sick (reduced by efficacy)
         Vap[:, t] -= r * omega_ap * nVap  # OUT: Waning to S
@@ -164,7 +170,7 @@ def difference_model(state_0, start, end,
 def run_model(state_0, start, end,
               om, phi, rho, f1, f2, f3, e=1,
               r=3, r_0=20, years_prior=10):
-    no_likelihood = -np.inf * np.ones((3, 192)), -np.inf * np.ones(270)
+    no_likelihood = -np.inf * np.ones((3, 192)), -np.inf * np.ones(36), -np.inf * np.ones(270)
     # fix and set params
     f = np.concatenate((nums(f1, sc[0]), nums(f2, sc[1]), nums(f3, sc[2])))
     phi = phi % (2 * np.pi)
@@ -214,10 +220,9 @@ def run_model(state_0, start, end,
     # Slices relevant for months data
     start_ix = (1998 - start) * 12
     end_ix = (2014 - start) * 12
-    extra_ix = 30
+    extra_ix = (2017 - start) * 12
     monthly = y[:, start_ix:end_ix]
-    extra_monthly = y[:, end_ix:extra_ix].sum(axis = 0)
-    print(extra_monthly.shape)
+    extra_monthly = y[:, end_ix:extra_ix].sum(axis=0)
 
     # Yearly
     # start_ix = 1951 - start
@@ -226,7 +231,7 @@ def run_model(state_0, start, end,
     # yearly = np.sum(yearly.reshape(-1, 12), axis=1)
     # yearly = yearly[start_ix:end_ix]
     # return (monthly, yearly)  # This is 3 lists of 192 Monthly points and 48 yearly
-    return monthly, state_z
+    # return monthly, state_z
     return monthly, extra_monthly, state_z
 
 
@@ -247,22 +252,25 @@ def init_mcmc(name, state_0, r_start, r_end, *params, **kwargs):
     mcmc['names'] = extra.get('names', ['omega', 'phi', 'rho', 'f1', 'f2', 'f3', 'e'])
     # mcmc['names'] = np.array(mcmc['names'])[apsl]
     # Initial Values
-    mcmc['values'] = np.array(params)[apsl]# CURRENT values ########################################
+    mcmc['values'] = np.array(params)[apsl]  # CURRENT values ########################################
     # vals = np.array(params)
     # vals[apsl] = mcmc['values'].copy()
     print(mcmc['values'], params)
-    M_now, state_z = run_model(state_0, r_start, r_end, *params)
-    mcmc['y_now_M'] = M_now.copy()#[None, :, :]  # CURRENT values ########################################
+    M_now, M2_now, state_z = run_model(state_0, r_start, r_end, *params)
+
+    mcmc['y_now_M'] = M_now.copy()  # [None, :, :]  # CURRENT values ########################################
+    mcmc['y2_now_M'] = M2_now.copy()  # [None, :, :]  # CURRENT values ########################################
     mcmc['active'] = True
 
     # Model Soecific
-    mcmc['d'] = len(apsl)#len(mcmc['names'])
+    mcmc['d'] = len(apsl)  # len(mcmc['names'])
     # mcmc['cov'] = np.diag((1/10, np.pi / 10, 0.5, 0.000005, 0.000005, 0.000005, 0.25 / 10))
     # mcmc['cov'] /= 100
     mcmc['scaling_factor'] = np.array([2.4 / np.sqrt(mcmc['d'])])
 
     # Chains and Metrics
     mcmc['y_hat_M'] = mcmc['y_now_M'].copy()[None, :, :]  # CHAIN: y values for proposed set (shape like data points)
+    mcmc['y2_hat_M'] = mcmc['y2_now_M'].copy()  # CHAIN: y values for proposed set (shape like data points)
     # mcmc['y_hat_Y'] = mcmc['y_now_Y'].copy()  # CHAIN: y values for proposed set (shape like data points)
     mcmc['chain'] = mcmc['values'].copy()  # CHAIN: proposed set
     mcmc['guesses'] = mcmc['values'].copy()  # CHAIN: proposed set
@@ -275,88 +283,14 @@ def init_mcmc(name, state_0, r_start, r_end, *params, **kwargs):
     mcmc['initial_guess'] = np.array(params)
     mcmc['tally'] = 0
     mcmc = {**mcmc, **extra}
-
     # After Uniting
     # State Z
     mcmc['state_z'] = state_z
     # ll_now = log_liklihood(mcmc['y_now_M'], mcmc['datax'], mcmc['sigma'])
-    ll_now = log_liklihood(M_now, mcmc['datax'], mcmc['sigma'])
+    ll_now = log_liklihood(M_now, mcmc['datay1'], mcmc['sigma'], noise=150)
+    ll_now += log_liklihood(M2_now, mcmc['datay2'], mcmc['sigma2'], noise=300)
     mcmc['ll'] = np.array([-np.inf, ll_now])
     # SD
-    mcmc['cov'] = mcmc['cov'][apsl,:][:,apsl]
+    mcmc['cov'] = mcmc['cov'][apsl, :][:, apsl]
     mcmc['sd'] = mcmc['scaling_factor'] ** 2 * mcmc['cov']
     return mcmc
-
-#
-# def make_model(data1, data2, state_0, r_start, r_end):
-#     '''data 1: monthly on 3 groups
-#     '''
-#     import pymc as pm
-#     om = pm.Normal('om', 4, 1 / 0.5 ** 2, value=4)
-#     # om.use_step_method(pm.Metropolis, sd_proposal=0.05)
-#     phi = pm.Uniform('phi', -np.pi, np.pi, value=0)
-#     f_top = 0.1
-#     f1 = pm.Uniform('f1', 0.001, f_top, value=0.05)
-#     f2 = pm.Uniform('f2', 0.001, f_top, value=0.05)
-#     f3 = pm.Uniform('f3', 0.001, f_top, value=0.05)
-#     state_0 = state_0
-#     fs = pm.Container([f1, f2, f3])
-#
-#     @pm.deterministic
-#     def maxf(fs=fs):
-#         return np.max(fs)
-#
-#     # rho = pm.Uniform('rho', np.max(fs), 2 * f_top, value=0.1)
-#     rho = pm.Uniform('rho', maxf + 0.01, f_top, value=0.09)
-#
-#     @pm.deterministic
-#     # def sim(rho=rho, om=om, phi=phi, f1=f1, f2=f2, f3=f3, state_0=state_0):
-#     def sim(rho=rho, om=om, phi=phi, fs=fs, state_0=state_0):
-#         f = np.concatenate((nums(fs[0], sc[0]), nums(fs[1], sc[1]), nums(fs[2], sc[2])))
-#         years_prior = 10
-#         y_0 = difference_model(state_0, r_start - years_prior, r_start,
-#                                rho, om, phi, f,
-#                                r=20, full_output=True)
-#         if type(y_0) != list:
-#             return -np.inf * np.ones((3, 192))
-#         state_0 = [yi[:, -1] for yi in y_0]
-#         r = 3
-#         y = difference_model(state_0, r_start, r_end,
-#                              rho, om, phi, f,
-#                              r=r)
-#
-#         # Take result and sum values according to susceptibility
-#         # print(y.shape)
-#         y = np.split(y, np.cumsum(sc)[:-1])
-#         y = [yi.sum(axis=0) for yi in y]
-#         y = [np.sum(yi.reshape(-1, r), axis=1) for yi in y]
-#         y = np.array(y)
-#         return y  # This is 3 lists of 192 Monthly points
-#
-#     @pm.deterministic
-#     def mu1(sim=sim):
-#         '''gets monthly data on 3 age groups. Slices to relevant
-#         data months'''
-#         # Slices relevant for months data
-#         start_ix = (1998 - r_start) * 12
-#         end_ix = (2014 - r_start) * 12
-#         ret = sim[:, start_ix:end_ix]
-#         return ret
-#         # Reduce y to monthly data and take only 1998-2014
-#         # res = reduce_month(y)[:, start_ix:end_ix]
-#         # logger.info(res.shape)
-#         # logger.info(data.shape)
-#
-#     # @pm.deterministic
-#     # def mu2(sim=sim):
-#     #     # start_ix = 1957 - r_start
-#     #     # end_ix = 2014 - r_start
-#     #     y = sim.sum(axis=0)
-#     #     y = np.sum(y.reshape(-1, 12), axis=1)
-#     #     return y
-#
-#     Y1 = pm.Normal('Y1', mu=mu1 * p, tau=1 / 50 ** 2, observed=True, value=data1)
-#     # Y2 = pm.Binomial('Y2', n=mu2, p=p, observed=True, value=data2)
-#
-#     return locals()
-#     # return ([rho, om, phi, f, mu1, mu2, Y1, Y2])

@@ -43,16 +43,19 @@ def sample_mcmc(mcmc, recalculate, sd_stop_after, scaling_stop_after, save_path)
                 new_cov_tmp = mcmc['cov'].copy()
                 try:
                     sigma_star = np.cov(mcmc['chain'][-recalculate:, :].T)
-                    new_cov = mcmc['cov '].copy() * 0.25 + 0.75 * sigma_star
+                    new_cov = mcmc['cov'].copy() * 0.25 + 0.75 * sigma_star
                     proposed = multinorm(mcmc['values'], new_cov * new_scaling_factor ** 2)
                     mcmc['cov'] = new_cov
-                except:
+                except Exception as e:
+                    print (e)
                     print("Singular COV at", len(mcmc['accepted']), mcmc['name'])
+                    print(mcmc['cov'])
                     mcmc['cov'] = new_cov_tmp
             mcmc['sd'] = new_scaling_factor ** 2 * mcmc['cov']
 
         # Current Stats
-        ll_now = log_liklihood(mcmc['y_now_M'], mcmc['datax'], mcmc['sigma'])
+        ll_now = log_liklihood(mcmc['y_now_M'], mcmc['datay1'], mcmc['sigma'])
+        ll_now += log_liklihood(mcmc['y2_now_M'], mcmc['datay2'], mcmc['sigma2'])
 
         # Pick new set
         try:
@@ -73,13 +76,14 @@ def sample_mcmc(mcmc, recalculate, sd_stop_after, scaling_stop_after, save_path)
         if any(test):  # If test fails, LL is -inf
             logger.error('Bad prior {} {}'.format(guess, test))
             ll_star = -np.inf
-            y_star_M, state_z = -np.inf * np.ones((3, 192)), -np.inf * np.ones(270)
+            y_star_M, y2_star_M, state_z = -np.inf * np.ones((3, 192)),-np.inf * np.ones(36), -np.inf * np.ones(270)
         else:  # We can carry on with MCMC
             try:
-                y_star_M, state_z = run_model(mcmc['state_0'], mcmc['start'], mcmc['end'], *g, e=1,
+                y_star_M, y2_star_M, state_z = run_model(mcmc['state_0'], mcmc['start'], mcmc['end'], *g, e=1,
                                               r_0=40)  # RUN MODEL =============================================
                 #                 logger.info(str(y_star_M))
-                ll_star = log_liklihood(y_star_M, mcmc['datax'], mcmc['sigma'])
+                ll_star = log_liklihood(y_star_M, mcmc['datay1'], mcmc['sigma'])
+                ll_star += log_liklihood(y2_star_M, mcmc['datay2'], mcmc['sigma2'])
                 logger.info(str(ll_star))
                 if ll_star < -99999:  # Something bad happend BY DESIGN at model
                     logger.warning('bad set for model {} with guess {}'.format(mcmc['name'], iteration))
@@ -95,6 +99,7 @@ def sample_mcmc(mcmc, recalculate, sd_stop_after, scaling_stop_after, save_path)
             mcmc['values'] = guess.copy()
             mcmc['accepted'] = np.append(mcmc['accepted'], 1)
             mcmc['y_now_M'] = y_star_M
+            mcmc['y2_now_M'] = y2_star_M
         else:
             mcmc['accepted'] = np.append(mcmc['accepted'], 0)
 
@@ -102,6 +107,10 @@ def sample_mcmc(mcmc, recalculate, sd_stop_after, scaling_stop_after, save_path)
         mcmc['chain'] = np.vstack((mcmc['chain'], mcmc['values']))
         mcmc['guesses'] = np.vstack((mcmc['guesses'], guess))
         mcmc['y_hat_M'] = np.concatenate((mcmc['y_hat_M'], y_star_M[None, :, :]), axis=0)
+        # print ('>>>>>>>>>>>>>>>')
+        # print (mcmc['y2_hat_M'])
+        # print (y2_star_M)
+        mcmc['y2_hat_M'] = np.vstack((mcmc['y2_hat_M'], y2_star_M))
         mcmc['max_likelihood'] = np.max((mcmc['max_likelihood'], ll_now))
         mcmc['ll'] = np.vstack((mcmc['ll'], np.array([ll_now, ll_star])))
         mcmc['state_z'] = np.vstack((mcmc['state_z'], state_z))

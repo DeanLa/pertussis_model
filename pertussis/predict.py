@@ -85,7 +85,6 @@ def init_policy(name, **kwargs):
         _control_ap = 0.25 * coverage * _control_ap.astype(float)[:-1]
         policy['control_ap'] = _control_ap
     # policy['pregnant_coverage'] = 0.95
-    # _vax_ap[22] = policy['pregnant_coverage'] * 0.5 # Vaccinate pregnant
     policy['vax_ap'] = _vax_ap
 
     # Chains and results
@@ -306,7 +305,7 @@ def simulate_future(simulation, iterations=1000, r=3):
             policy['pregnant_coverage'] = uniform_preg_cov
             # print (policy['pregnant_coverage'])
             # print ( policy['vax_ap'])
-            policy['vax_ap'][22] = policy['pregnant_coverage'] * 0.5  # Vaccinate pregnant
+            policy['vax_ap'][21] = policy['pregnant_coverage'] * 0.5  # Vaccinate pregnant
             # print ( policy['vax_ap'])
             # print()
             y = predict_model(state_0, start, end,
