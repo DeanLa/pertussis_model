@@ -108,6 +108,7 @@ def chain_summary(mcmc):
 
 def plot_chains(mcmc, dists=None, ax=None, fig=None, multi_chain=False):
     from scipy.stats import gaussian_kde as kde
+    from scipy.stats.mstats import mquantiles
     tally = mcmc['tally']
     # mcmc = mcmc0
     chain = mcmc['chain'][tally:, :]
@@ -135,6 +136,8 @@ def plot_chains(mcmc, dists=None, ax=None, fig=None, multi_chain=False):
             a, b = a, a + b
         else:
             a, b = min(ch), max(ch)
+        qs = mquantiles(chain[:,i], [0.025,0.5,0.975])
+        print (qs)
         a *= 0.9
         b *= 1.1
         ax = axs[i, 0]
@@ -147,7 +150,11 @@ def plot_chains(mcmc, dists=None, ax=None, fig=None, multi_chain=False):
                     color='steelblue', ls='--', alpha=0.5, label="Proposed")
             ax.plot(tally + np.arange(l), chain[:, i],
                     color='red', label="Accepted")  # , label = 'chain {}'.format(j))
-        ax.set_ylabel(name, rotation=0, fontsize=20)
+            lims = mcmc['tally'], len(mcmc['chain'])
+            ax.hlines(qs,*lims,lw=1,linestyles='--', zorder=10)
+            ax.set_xlim(*lims)
+            ax.set_yticks(qs)
+
         ax.legend()
 
         # MIDDLE - Distribution
@@ -158,6 +165,7 @@ def plot_chains(mcmc, dists=None, ax=None, fig=None, multi_chain=False):
                 axs[i, 1].plot(xs, density(xs))
         except:
             print("{} Can't KDE yet on {}".format(mcmc['name'], name))
+        axs[i,1].set_ylabel(name, rotation=0, fontsize=30,)
         c, d = axs[i, 1].get_xlim()
         a = min(a, c)
         b = max(b, d)
@@ -198,7 +206,7 @@ def policy_comparison(df, colors, ax=None):
         fig = ax.figure.canvas
     else:
         fig, ax = plt.subplots(figsize=(16, 16))
-    sns.boxplot(data = df, ax=ax, orient="h", palette=colors)
+    sns.boxplot(data = df, ax=ax, orient="h", palette=colors, linewidth=1)
     win_ratio = (df > 0).mean(axis=0).values
     ax.set_yticklabels(policy_names, fontdict=fontdict)
     ax.vlines(0, 0, len(policy_names), linestyles='--', alpha=0.3)
@@ -213,4 +221,30 @@ def policy_comparison(df, colors, ax=None):
         ax.annotate("{:.2f}%".format(100*r), xy=(lims[0], i-0.1), fontsize=16, color=text_color)
 
     plt.tight_layout()
+    return fig, ax
+
+def spline(arrx, arry, interval=0.05, med=True):
+    l = np.arange(0,1,0.01)
+    u = np.arange(interval,1+interval,0.01)
+    # print(len(u),len(l))
+    line = []
+    for a,b in zip (l,u):
+        g = arry[(arrx>=a) & (arrx<=b)]
+        # line.append(g.mean())
+        if med:
+            line.append(np.median(g))
+        else:
+            line.append(np.mean(g))
+    large = np.median(arry[(arrx >= 0.0) & (arrx <= 0.03)])
+    small = np.median(arry[(arrx>=0.97) & (arrx<=1)])
+    print ("{} - {} = {}: reduction {}".format(large,small,large-small, small/large))
+    return (l+u)/2, line
+
+def random_scatter(df, var):
+    fig, ax = plt.subplots()
+    ax.scatter(df[var], df.ll, alpha=0.005, s=10, c='C2')
+    ticks = np.arange(0, 1 + 0.001, 0.05)
+    ax.set_xticks(ticks)
+    # ax.set_xticklabels(ticks * 100 + 10)
+    ax.hlines(df.ll.max(), 0, 1, lw=0.1)
     return fig, ax

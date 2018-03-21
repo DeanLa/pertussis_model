@@ -31,8 +31,8 @@ if __name__ == '__main__':
     # Init or load
 
     # ### Load
-    load = False
-    # load = True
+    # load = False
+    load = True
 
     # Load
     if load:

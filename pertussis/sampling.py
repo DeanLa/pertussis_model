@@ -1,10 +1,10 @@
-from pertussis import *
 import threading
 import multiprocessing
 import numpy as np
 from scipy.stats import norm, uniform, multivariate_normal as multinorm
 from time import sleep, clock
 from tqdm import tqdm, trange  # , tqdm_notebook as tqnb
+from pertussis import *
 
 
 def sample_mcmc(mcmc, recalculate, sd_stop_after, scaling_stop_after, save_path):
@@ -133,7 +133,7 @@ def sample_multi(mcmcs, recalculate, sd_stop_after, scaling_stop_after, save_pat
     #     t.join()
 
     n = len(mcmcs)
-    pool = multiprocessing.Pool(len(mcmcs))
+    pool = multiprocessing.Pool(n)
     ret = pool.starmap(sample_mcmc, zip(mcmcs,
                                         n * [recalculate],
                                         n * [sd_stop_after],
